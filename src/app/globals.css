@@ -1,26 +1,61 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --color-background: #f4f6f8;
+    --color-foreground: #0f172a;
+    --color-card: #ffffff;
+    --color-card-foreground: #0f172a;
+    --color-primary: #059669;
+    --color-primary-foreground: #ffffff;
+    --color-muted: #e2e8f0;
+    --color-muted-foreground: #475569;
+    --color-border: #cbd5e1;
+  }
+  
+  /* Cyber Emerald Teal Dark Palette (Matching Mockup 1 Exactly) */
+  .dark {
+    --color-background: #06141b;
+    --color-foreground: #f8fafc;
+    --color-card: #0b1e28;
+    --color-card-foreground: #f8fafc;
+    --color-primary: #10b981;
+    --color-primary-foreground: #06141b;
+    --color-muted: #163546;
+    --color-muted-foreground: #94a3b8;
+    --color-border: #163546;
+  }
+
+  * {
+    border-color: var(--color-border);
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-feature-settings: "rlig" 1, "calt" 1;
+    -webkit-font-smoothing: antialiased;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Glassmorphism & Cyber Teal Glow Utilities */
+.glass-panel {
+  background: rgba(11, 30, 40, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(22, 53, 70, 0.8);
+}
+
+.glass-card {
+  background: rgba(11, 30, 40, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(22, 53, 70, 0.9);
+}
+
+.glow-teal-sm {
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.2);
+}
+
+.glow-teal-md {
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.35);
 }
