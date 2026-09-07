@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Header } from "@/components/layout/Header";
 import { fetchInstances, Instance } from "@/lib/api-client";
+import { getFilteredInstancesForUser } from "@/lib/user-session-utils";
 import { StatCards } from "@/components/dashboard/stat-cards";
 import { ActivityChart } from "@/components/dashboard/activity-chart";
 import { TrafficWidget } from "@/components/dashboard/traffic-widget";
@@ -16,7 +17,8 @@ export default function DashboardPage() {
     setLoading(true);
     try {
       const data = await fetchInstances();
-      setInstances(data);
+      const userInstances = getFilteredInstancesForUser(data);
+      setInstances(userInstances);
       setEngineOnline(true);
     } catch {
       setEngineOnline(false);

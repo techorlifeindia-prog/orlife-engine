@@ -32,6 +32,10 @@ export function getFilteredInstancesForUser(rawInstances: Instance[]): Instance[
   }
 
   const cleanUserPhone = userPhone.replace(/\D/g, "");
+  if (!cleanUserPhone) {
+    return [];
+  }
+
   const filtered = rawInstances.filter((d) => {
     const cleanOwner = (d.owner || "").replace(/\D/g, "");
     if (cleanUserPhone && cleanOwner && (cleanOwner.includes(cleanUserPhone) || cleanUserPhone.includes(cleanOwner))) {
@@ -43,5 +47,5 @@ export function getFilteredInstancesForUser(rawInstances: Instance[]): Instance[
     return false;
   });
 
-  return filtered.length > 0 ? filtered : rawInstances.filter((d) => (d.owner || "").includes("8002821800"));
+  return filtered;
 }

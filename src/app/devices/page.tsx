@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Header } from "@/components/layout/Header";
 import { Plus, RefreshCw } from "lucide-react";
 import { fetchInstances, createInstance, logoutInstance, Instance } from "@/lib/api-client";
+import { getFilteredInstancesForUser } from "@/lib/user-session-utils";
 import { QRModal } from "@/components/devices/qr-modal";
 import { TestModal } from "@/components/devices/test-modal";
 import { DeviceCard } from "@/components/devices/device-card";
@@ -27,55 +28,8 @@ export default function DevicesPage() {
   const loadData = async () => {
     setLoading(true);
     const data = await fetchInstances();
-
-    // Determine logged in user
-    let userPhone = "";
-    let userRole = "Client Account";
-    let isSuperAdmin = false;
-
-    const impersonating = localStorage.getItem("superadmin_impersonating_client");
-    if (impersonating) {
-      try {
-        const parsed = JSON.parse(impersonating);
-        userPhone = parsed.phone || "";
-        userRole = "Client Account";
-      } catch (e) {}
-    } else {
-      const savedUser = localStorage.getItem("orlife_current_user");
-      if (savedUser) {
-        try {
-          const parsed = JSON.parse(savedUser);
-          userPhone = parsed.phone || "";
-          userRole = parsed.role || "";
-          if (userRole === "Super Admin" || userPhone.includes("9246574995") || parsed.email === "super@gmail.com") {
-            isSuperAdmin = true;
-          }
-        } catch (e) {}
-      } else {
-        isSuperAdmin = true;
-      }
-    }
-
-    if (isSuperAdmin) {
-      setInstances(data);
-    } else {
-      // Filter devices for specific client account
-      const cleanUserPhone = userPhone.replace(/\D/g, "");
-      const filtered = data.filter((d) => {
-        const cleanOwner = (d.owner || "").replace(/\D/g, "");
-        if (cleanUserPhone && cleanOwner && (cleanOwner.includes(cleanUserPhone) || cleanUserPhone.includes(cleanOwner))) {
-          return true;
-        }
-        if (d.profileName?.toLowerCase().includes("chamunda") && cleanUserPhone.includes("8002821800")) {
-          return true;
-        }
-        return false;
-      });
-
-      // If filtered is empty for client, show client's own instance if available
-      setInstances(filtered.length > 0 ? filtered : data.filter((d) => d.owner?.includes("8002821800")));
-    }
-
+    const filtered = getFilteredInstancesForUser(data);
+    setInstances(filtered);
     setLoading(false);
   };
 
