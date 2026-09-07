@@ -297,9 +297,20 @@ export default function LoginPage() {
             onSubmit={(e) => {
               e.preventDefault();
               if (email.trim() && password.trim()) {
+                const isSuper = email.trim().toLowerCase() === "super@gmail.com" || email.trim().toLowerCase().includes("super");
+                const userObj = {
+                  name: isSuper ? "Super Admin" : "Client User",
+                  email: email.trim(),
+                  role: isSuper ? "Super Admin" : "Client View",
+                  phone: "+919246574995",
+                };
+                localStorage.setItem("orlife_current_user", JSON.stringify(userObj));
+                localStorage.removeItem("superadmin_impersonating_client");
+                window.dispatchEvent(new Event("user_session_changed"));
+
                 setMessageAlert({
                   type: "success",
-                  text: "🟢 Super Admin Authenticated (super@gmail.com)! Redirecting to Dashboard...",
+                  text: `🟢 ${isSuper ? "Super Admin" : "User"} Authenticated (${email.trim()})! Redirecting...`,
                 });
                 setTimeout(() => {
                   window.location.href = "/";

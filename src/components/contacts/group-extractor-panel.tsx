@@ -74,19 +74,29 @@ export function GroupExtractorPanel({ onExtractContacts }: GroupExtractorPanelPr
   const selectedProfileName = selectedDevice?.profileName || selectedDevice?.instanceName || "Connected Account";
   const isConnected = selectedDevice?.status === "open";
 
-  // Load cached groups on mount or when selectedInstance changes
+  // Load cached groups strictly for the current selectedInstance
   useEffect(() => {
-    const cacheKey = selectedInstance ? `whatsapp_groups_${selectedInstance}` : "whatsapp_cached_groups";
-    const cached = localStorage.getItem(cacheKey) || localStorage.getItem("whatsapp_cached_groups");
-    if (!cached) return;
-    try {
-      const parsed = JSON.parse(cached);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        setGroups(parsed);
-      }
-    } catch (e) {
-      console.error("Error loading cached groups:", e);
+    if (!selectedInstance) {
+      setGroups([]);
+      return;
     }
+
+    const cacheKey = `whatsapp_groups_${selectedInstance}`;
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed)) {
+          setGroups(parsed);
+          return;
+        }
+      } catch (e) {
+        console.error("Error loading cached groups:", e);
+      }
+    }
+    
+    // If no cache for this specific instance, clear groups
+    setGroups([]);
   }, [selectedInstance]);
 
   const handleFetchGroups = async () => {
@@ -100,7 +110,6 @@ export function GroupExtractorPanel({ onExtractContacts }: GroupExtractorPanelPr
       setGroups(groupList);
 
       if (groupList.length > 0) {
-        localStorage.setItem("whatsapp_cached_groups", JSON.stringify(groupList));
         localStorage.setItem(`whatsapp_groups_${selectedInstance}`, JSON.stringify(groupList));
       }
     } catch (error) {
@@ -162,19 +171,19 @@ export function GroupExtractorPanel({ onExtractContacts }: GroupExtractorPanelPr
   );
 
   return (
-    <div className="bg-[#0b1d28] border border-[#1b3a4e] rounded-2xl p-4 shadow-lg space-y-3.5 flex flex-col h-full">
+    <div className="bg-white dark:bg-[#0b1d28] border border-slate-200 dark:border-[#1b3a4e] rounded-2xl p-4 shadow-lg space-y-3.5 flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-[#183647] pb-3">
+      <div className="flex items-center justify-between border-b border-slate-200 dark:border-[#183647] pb-3">
         <div className="min-w-0 pr-2">
-          <h3 className="font-bold text-sm text-slate-100 flex items-center gap-1.5 truncate">
-            <Sparkles className="w-4 h-4 text-emerald-400 shrink-0" />
+          <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100 flex items-center gap-1.5 truncate">
+            <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
             WhatsApp Group Extractor
           </h3>
-          <p className="text-slate-400 text-[11px] mt-0.5 truncate">
+          <p className="text-slate-500 dark:text-slate-400 text-[11px] mt-0.5 truncate">
             Extract & broadcast messages to group members directly.
           </p>
         </div>
-        <span className="text-[11px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-semibold shrink-0">
+        <span className="text-[11px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-semibold shrink-0">
           {filteredGroups.length} / {groups.length} Groups
         </span>
       </div>
@@ -182,8 +191,8 @@ export function GroupExtractorPanel({ onExtractContacts }: GroupExtractorPanelPr
       {/* Device Selector & Fetch Action */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
-          <label className="text-[11px] font-semibold text-slate-400 flex items-center gap-1">
-            <Smartphone className="w-3.5 h-3.5 text-emerald-400" /> Connected WhatsApp Account
+          <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-1">
+            <Smartphone className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> Connected WhatsApp Account
           </label>
         </div>
 
@@ -194,30 +203,30 @@ export function GroupExtractorPanel({ onExtractContacts }: GroupExtractorPanelPr
               type="button"
               onClick={() => setIsDropdownOpen((prev) => !prev)}
               title={`${selectedProfileName} (${selectedOwnerNum})`}
-              className="w-full bg-[#06141c] text-slate-100 border border-[#1b3a4e] text-xs rounded-xl px-2.5 py-2 flex items-center justify-between font-semibold hover:border-emerald-500/60 focus:outline-none transition-all cursor-pointer truncate gap-1"
+              className="w-full bg-slate-50 dark:bg-[#06141c] text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-[#1b3a4e] text-xs rounded-xl px-2.5 py-2 flex items-center justify-between font-semibold hover:border-emerald-500/60 focus:outline-none transition-all cursor-pointer truncate gap-1"
             >
               <div className="flex items-center gap-1.5 truncate min-w-0">
-                <span className="font-mono text-slate-100 text-xs font-bold truncate">
+                <span className="font-mono text-slate-900 dark:text-slate-100 text-xs font-bold truncate">
                   {selectedDevice ? selectedOwnerNum : "No Account Connected"}
                 </span>
               </div>
 
               <div className="flex items-center gap-1 shrink-0">
-                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${isConnected ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "bg-slate-800 text-slate-400"}`}>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${isConnected ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30" : "bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400"}`}>
                   {isConnected ? "● Online" : "○ Offline"}
                 </span>
-                <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${isDropdownOpen ? "rotate-180 text-emerald-400" : ""}`} />
+                <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${isDropdownOpen ? "rotate-180 text-emerald-500" : ""}`} />
               </div>
             </button>
 
-            {/* Mouse Click Floating Options Menu (Shows Name + Mobile Number) */}
+            {/* Mouse Click Floating Options Menu */}
             {isDropdownOpen && (
-              <div className="absolute top-full left-0 right-0 mt-1 z-50 bg-[#0a1822] border border-[#1b3a4e] rounded-xl shadow-2xl py-1 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150">
-                <div className="px-3 py-1 text-[10px] uppercase tracking-wider text-slate-400 font-bold border-b border-[#163244] mb-1">
+              <div className="absolute top-full left-0 right-0 mt-1 z-50 bg-white dark:bg-[#0a1822] border border-slate-200 dark:border-[#1b3a4e] rounded-xl shadow-2xl py-1 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150">
+                <div className="px-3 py-1 text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-bold border-b border-slate-200 dark:border-[#163244] mb-1">
                   Connected Accounts (Click to Select)
                 </div>
                 {instances.length === 0 ? (
-                  <div className="px-3 py-2 text-xs text-slate-400 italic">No WhatsApp accounts connected</div>
+                  <div className="px-3 py-2 text-xs text-slate-500 dark:text-slate-400 italic">No WhatsApp accounts connected</div>
                 ) : (
                   instances.map((inst) => {
                     const instOwner = inst.owner ? formatPhoneNumber(inst.owner) : inst.instanceName;
@@ -235,17 +244,17 @@ export function GroupExtractorPanel({ onExtractContacts }: GroupExtractorPanelPr
                         }}
                         className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between transition-colors ${
                           isSelected
-                            ? "bg-emerald-500/15 text-emerald-300 font-bold border-l-2 border-emerald-400"
-                            : "hover:bg-[#122836] text-slate-200"
+                            ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 font-bold border-l-2 border-emerald-500"
+                            : "hover:bg-slate-100 dark:hover:bg-[#122836] text-slate-800 dark:text-slate-200"
                         }`}
                       >
                         <div className="min-w-0 pr-2">
-                          <div className="font-bold truncate text-slate-100 text-xs">{instName}</div>
-                          <div className="text-[11px] text-emerald-400/90 font-mono flex items-center gap-1 mt-0.5">
+                          <div className="font-bold truncate text-slate-900 dark:text-slate-100 text-xs">{instName}</div>
+                          <div className="text-[11px] text-emerald-600 dark:text-emerald-400/90 font-mono flex items-center gap-1 mt-0.5">
                             <Smartphone className="w-3 h-3 text-slate-400" /> {instOwner}
                           </div>
                         </div>
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold shrink-0 ${instConnected ? "bg-emerald-500/20 text-emerald-400" : "bg-slate-800 text-slate-400"}`}>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold shrink-0 ${instConnected ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400" : "bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400"}`}>
                           {instConnected ? "Connected" : "Offline"}
                         </span>
                       </button>
@@ -266,7 +275,7 @@ export function GroupExtractorPanel({ onExtractContacts }: GroupExtractorPanelPr
         </div>
       </div>
 
-      {/* Group Search Box (Active when groups loaded) */}
+      {/* Group Search Box */}
       {groups.length > 0 && (
         <div className="relative">
           <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -275,12 +284,12 @@ export function GroupExtractorPanel({ onExtractContacts }: GroupExtractorPanelPr
             placeholder="Search groups..."
             value={groupSearchQuery}
             onChange={(e) => setGroupSearchQuery(e.target.value)}
-            className="w-full bg-[#06141c] border border-[#1b3a4e] text-slate-100 placeholder:text-slate-500 text-xs rounded-xl pl-8 pr-7 py-2 focus:outline-none focus:border-emerald-500 font-medium transition-all"
+            className="w-full bg-slate-50 dark:bg-[#06141c] border border-slate-200 dark:border-[#1b3a4e] text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 text-xs rounded-xl pl-8 pr-7 py-2 focus:outline-none focus:border-emerald-500 font-medium transition-all"
           />
           {groupSearchQuery && (
             <button
               onClick={() => setGroupSearchQuery("")}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -290,8 +299,8 @@ export function GroupExtractorPanel({ onExtractContacts }: GroupExtractorPanelPr
 
       {/* Feedback Alert */}
       {extractedSuccessMsg && (
-        <div className="bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs p-2.5 rounded-xl flex items-center gap-2 animate-in fade-in">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+        <div className="bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-xs p-2.5 rounded-xl flex items-center gap-2 animate-in fade-in">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
           <span className="truncate">{extractedSuccessMsg}</span>
         </div>
       )}
@@ -299,34 +308,34 @@ export function GroupExtractorPanel({ onExtractContacts }: GroupExtractorPanelPr
       {/* Groups List */}
       <div className="flex-1 overflow-y-auto max-h-[460px] space-y-2 pr-1 scrollbar-thin">
         {loadingGroups ? (
-          <div className="py-10 text-center text-slate-400">
-            <RefreshCw className="w-6 h-6 animate-spin text-emerald-400 mx-auto mb-2" />
+          <div className="py-10 text-center text-slate-500 dark:text-slate-400">
+            <RefreshCw className="w-6 h-6 animate-spin text-emerald-500 dark:text-emerald-400 mx-auto mb-2" />
             <p className="text-xs font-medium">Fetching joined groups...</p>
           </div>
         ) : groups.length === 0 ? (
-          <div className="py-8 text-center text-slate-400 border border-dashed border-[#1b3a4e] rounded-xl bg-[#06141c]/50 p-5">
-            <Users className="w-7 h-7 text-slate-500 mx-auto mb-2 opacity-60" />
-            <p className="font-semibold text-slate-300 text-xs">No groups loaded.</p>
+          <div className="py-8 text-center text-slate-500 dark:text-slate-400 border border-dashed border-slate-300 dark:border-[#1b3a4e] rounded-xl bg-slate-50 dark:bg-[#06141c]/50 p-5">
+            <Users className="w-7 h-7 text-slate-400 dark:text-slate-500 mx-auto mb-2 opacity-60" />
+            <p className="font-semibold text-slate-800 dark:text-slate-300 text-xs">No groups loaded.</p>
             <p className="text-slate-500 text-[11px] mt-1">
-              Click <span className="font-bold text-emerald-400">"Fetch Groups"</span> above.
+              Click <span className="font-bold text-emerald-600 dark:text-emerald-400">"Fetch Groups"</span> above.
             </p>
           </div>
         ) : filteredGroups.length === 0 ? (
-          <div className="py-6 text-center text-slate-400 text-xs">
+          <div className="py-6 text-center text-slate-500 dark:text-slate-400 text-xs">
             No matching groups found
           </div>
         ) : (
           filteredGroups.map((group) => (
             <div
               key={group.id}
-              className="p-2.5 rounded-xl border border-[#163546] bg-[#06141c] flex items-center justify-between hover:border-emerald-500/40 transition-all group gap-1.5"
+              className="p-2.5 rounded-xl border border-slate-200 dark:border-[#163546] bg-slate-50 dark:bg-[#06141c] flex items-center justify-between hover:border-emerald-500/40 transition-all group gap-1.5"
             >
               <div className="min-w-0 flex-1">
-                <h4 className="font-bold text-xs text-slate-100 group-hover:text-emerald-300 transition-colors truncate">
+                <h4 className="font-bold text-xs text-slate-900 dark:text-slate-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-300 transition-colors truncate">
                   {group.subject}
                 </h4>
-                <p className="text-[11px] text-slate-400 font-mono mt-0.5 flex items-center gap-1">
-                  <Users className="w-3 h-3 text-slate-500 shrink-0" /> {group.participants.length} Members
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-mono mt-0.5 flex items-center gap-1">
+                  <Users className="w-3 h-3 text-slate-400 dark:text-slate-500 shrink-0" /> {group.participants.length} Members
                 </p>
               </div>
 
@@ -335,7 +344,7 @@ export function GroupExtractorPanel({ onExtractContacts }: GroupExtractorPanelPr
                   onClick={() => handleExtractGroupMembers(group)}
                   disabled={extractingGroupId === group.id}
                   title="Extract contacts to table"
-                  className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all active:scale-95 shrink-0"
+                  className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 px-2 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all active:scale-95 shrink-0"
                 >
                   {extractingGroupId === group.id ? (
                     <RefreshCw className="w-3 h-3 animate-spin" />
@@ -350,7 +359,7 @@ export function GroupExtractorPanel({ onExtractContacts }: GroupExtractorPanelPr
                   onClick={() => handleSaveAndBroadcastGroup(group)}
                   disabled={extractingGroupId === group.id}
                   title="Save & launch broadcast message to group"
-                  className="bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 border border-sky-500/30 px-2 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all active:scale-95 shrink-0"
+                  className="bg-sky-500/10 hover:bg-sky-500/20 text-sky-600 dark:text-sky-400 border border-sky-500/30 px-2 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all active:scale-95 shrink-0"
                 >
                   <Send className="w-3 h-3" /> Broadcast
                 </button>

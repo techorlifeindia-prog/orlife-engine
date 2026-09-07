@@ -9,6 +9,8 @@ import { QRModal } from "@/components/devices/qr-modal";
 import { TestModal } from "@/components/devices/test-modal";
 import { DeviceCard } from "@/components/devices/device-card";
 
+import { useConfirmStore } from "@/lib/confirm-store";
+
 export default function DevicesPage() {
   const [instances, setInstances] = useState<Instance[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,10 +54,16 @@ export default function DevicesPage() {
   };
 
   const handleDisconnect = async (instanceName: string) => {
-    if (confirm(`Kya aap "${instanceName}" device ko delete/disconnect karna chahte hain?`)) {
-      await logoutInstance(instanceName);
-      loadData();
-    }
+    useConfirmStore.getState().showConfirm({
+      title: "Disconnect WhatsApp Device?",
+      message: `Are you sure you want to delete/disconnect "${instanceName}"? This will log out the WhatsApp web session.`,
+      type: "danger",
+      confirmText: "Yes, Disconnect Device",
+      onConfirm: async () => {
+        await logoutInstance(instanceName);
+        loadData();
+      },
+    });
   };
 
   return (

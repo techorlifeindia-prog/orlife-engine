@@ -4,6 +4,8 @@ import { useState } from "react";
 import { Header } from "@/components/layout/Header";
 import { Search, UserPlus, ShieldCheck, Mail, Phone, Lock, Edit3, Trash2, CheckCircle2, UserCheck, X, KeyRound, Sparkles } from "lucide-react";
 
+import { useConfirmStore } from "@/lib/confirm-store";
+
 interface UserRecord {
   id: string;
   name: string;
@@ -58,7 +60,11 @@ export default function UsersPage() {
   const handleAddUser = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newName.trim() || !newEmail.trim()) {
-      alert("Please provide User Name and Email!");
+      useConfirmStore.getState().showAlert({
+        title: "Required Fields Missing",
+        message: "User Name and Email Address are required!",
+        type: "warning",
+      });
       return;
     }
 
@@ -79,12 +85,29 @@ export default function UsersPage() {
     setNewEmail("");
     setNewPhone("");
     setNewPassword("123456");
+
+    useConfirmStore.getState().showAlert({
+      title: "User Created",
+      message: `User "${newUser.name}" was successfully registered with role ${newUser.role}.`,
+      type: "success",
+    });
   };
 
-  const handleDeleteUser = (id: string) => {
-    if (confirm("Are you sure you want to remove this user?")) {
-      setUsers(users.filter((u) => u.id !== id));
-    }
+  const handleDeleteUser = (id: string, name: string) => {
+    useConfirmStore.getState().showConfirm({
+      title: "Remove Portal User?",
+      message: `Are you sure you want to remove user "${name}"? They will lose access to the portal immediately.`,
+      type: "danger",
+      confirmText: "Yes, Remove User",
+      onConfirm: () => {
+        setUsers(users.filter((u) => u.id !== id));
+        useConfirmStore.getState().showAlert({
+          title: "User Removed",
+          message: `User "${name}" has been deleted.`,
+          type: "info",
+        });
+      },
+    });
   };
 
   const filteredUsers = users.filter((user) => {
@@ -103,7 +126,7 @@ export default function UsersPage() {
 
       <div className="px-3 py-4 w-full space-y-5">
         {/* Toolbar: Search, Role Filters, Add User Button */}
-        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 bg-[#0b1d28] border border-[#1b3a4e] p-4 rounded-2xl shadow-sm">
+        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 bg-white dark:bg-[#0b1d28] border border-slate-200 dark:border-[#1b3a4e] p-4 rounded-2xl shadow-sm">
           {/* Search Box */}
           <div className="relative flex-1">
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -112,7 +135,7 @@ export default function UsersPage() {
               placeholder="Search user by name, email or phone..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-[#06141c] border border-[#1b3a4e] text-slate-100 placeholder:text-slate-500 text-xs rounded-xl pl-9 pr-3.5 py-2.5 focus:outline-none focus:border-emerald-500 font-medium transition-colors"
+              className="w-full bg-slate-50 dark:bg-[#06141c] border border-slate-200 dark:border-[#1b3a4e] text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 text-xs rounded-xl pl-9 pr-3.5 py-2.5 focus:outline-none focus:border-emerald-500 font-medium transition-colors"
             />
           </div>
 
@@ -124,8 +147,8 @@ export default function UsersPage() {
                 onClick={() => setSelectedRoleFilter(role)}
                 className={`px-3 py-1.5 text-xs font-semibold rounded-xl transition-all ${
                   selectedRoleFilter === role
-                    ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm"
-                    : "bg-[#06141c] text-slate-400 border border-[#1b3a4e] hover:text-slate-200"
+                    ? "bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 border border-emerald-500/30 dark:border-emerald-500/40 shadow-sm"
+                    : "bg-slate-50 dark:bg-[#06141c] text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-[#1b3a4e] hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100"
                 }`}
               >
                 {role}
@@ -143,10 +166,10 @@ export default function UsersPage() {
         </div>
 
         {/* Users Table */}
-        <div className="bg-[#0b1d28] border border-[#1b3a4e] rounded-2xl shadow-sm overflow-hidden">
+        <div className="bg-white dark:bg-[#0b1d28] border border-slate-200 dark:border-[#1b3a4e] rounded-2xl shadow-sm overflow-hidden">
           <div className="overflow-x-auto max-h-[540px] overflow-y-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-[#06141c] border-b border-[#1b3a4e] text-slate-400 uppercase tracking-wider font-semibold sticky top-0 z-10">
+              <thead className="bg-slate-50 dark:bg-[#06141c] border-b border-slate-200 dark:border-[#1b3a4e] text-slate-500 dark:text-slate-400 uppercase tracking-wider font-semibold sticky top-0 z-10">
                 <tr>
                   <th className="py-3 px-4 w-12 text-center">S.No</th>
                   <th className="py-3 px-4">User Name</th>
@@ -157,7 +180,7 @@ export default function UsersPage() {
                   <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#183647] text-slate-200 font-sans">
+              <tbody className="divide-y divide-slate-100 dark:divide-[#183647] text-slate-800 dark:text-slate-200 font-sans">
                 {filteredUsers.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="py-12 text-center text-slate-500 text-xs">
@@ -166,30 +189,30 @@ export default function UsersPage() {
                   </tr>
                 ) : (
                   filteredUsers.map((user, idx) => (
-                    <tr key={user.id} className="hover:bg-[#0f2736] transition-colors">
-                      <td className="py-3.5 px-4 font-mono text-center text-slate-400 font-bold">
+                    <tr key={user.id} className="hover:bg-slate-50 dark:hover:bg-[#0f2736] transition-colors">
+                      <td className="py-3.5 px-4 font-mono text-center text-slate-500 dark:text-slate-400 font-bold">
                         {idx + 1}
                       </td>
-                      <td className="py-3.5 px-4 font-bold text-slate-100 flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center font-mono text-xs shrink-0">
+                      <td className="py-3.5 px-4 font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-mono text-xs shrink-0">
                           {user.name.charAt(0).toUpperCase()}
                         </div>
                         <span>{user.name}</span>
                       </td>
-                      <td className="py-3.5 px-4 font-mono text-slate-300">
+                      <td className="py-3.5 px-4 font-mono text-slate-600 dark:text-slate-300">
                         {user.email}
                       </td>
-                      <td className="py-3.5 px-4 font-mono text-emerald-400 font-semibold">
+                      <td className="py-3.5 px-4 font-mono text-emerald-600 dark:text-emerald-400 font-semibold">
                         {user.phone}
                       </td>
                       <td className="py-3.5 px-4">
                         <span
                           className={`inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${
                             user.role === "Super Admin"
-                              ? "bg-amber-500/15 text-amber-300 border-amber-500/30"
+                              ? "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30"
                               : user.role === "Manager"
-                              ? "bg-teal-500/15 text-teal-300 border-teal-500/30"
-                              : "bg-slate-700/40 text-slate-300 border-slate-600/40"
+                              ? "bg-teal-500/15 text-teal-700 dark:text-teal-300 border-teal-500/30"
+                              : "bg-slate-200 dark:bg-slate-700/40 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-600/40"
                           }`}
                         >
                           <ShieldCheck className="w-3 h-3" />
@@ -197,23 +220,29 @@ export default function UsersPage() {
                         </span>
                       </td>
                       <td className="py-3.5 px-4">
-                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse"></span>
                           {user.status}
                         </span>
                       </td>
                       <td className="py-3.5 px-4 text-right">
                         <div className="flex items-center justify-end gap-2">
                           <button
-                            onClick={() => alert(`Reset password sent for ${user.email}`)}
-                            className="p-1.5 rounded-lg bg-[#06141c] hover:bg-[#183647] text-slate-400 hover:text-amber-400 border border-[#1b3a4e] transition-colors"
+                            onClick={() =>
+                              useConfirmStore.getState().showAlert({
+                                title: "Password Reset Link Sent",
+                                message: `Password reset instructions have been dispatched to ${user.email}.`,
+                                type: "info",
+                              })
+                            }
+                            className="p-1.5 rounded-lg bg-slate-100 dark:bg-[#06141c] hover:bg-amber-50 dark:hover:bg-[#183647] text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 border border-slate-200 dark:border-[#1b3a4e] transition-colors"
                             title="Reset Password"
                           >
                             <KeyRound className="w-3.5 h-3.5" />
                           </button>
                           <button
-                            onClick={() => handleDeleteUser(user.id)}
-                            className="p-1.5 rounded-lg bg-[#06141c] hover:bg-red-500/10 text-slate-400 hover:text-red-400 border border-[#1b3a4e] transition-colors"
+                            onClick={() => handleDeleteUser(user.id, user.name)}
+                            className="p-1.5 rounded-lg bg-slate-100 dark:bg-[#06141c] hover:bg-red-500/10 text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 border border-slate-200 dark:border-[#1b3a4e] transition-colors"
                             title="Delete User"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -228,23 +257,23 @@ export default function UsersPage() {
           </div>
 
           {/* Table Summary Footer */}
-          <div className="px-4 py-3 bg-[#06141c] border-t border-[#1b3a4e] flex items-center justify-between text-xs text-slate-400 font-mono">
+          <div className="px-4 py-3 bg-slate-50 dark:bg-[#06141c] border-t border-slate-200 dark:border-[#1b3a4e] flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-mono">
             <span>Total Registered System Users: {users.length}</span>
-            <span className="text-emerald-400 font-semibold">Super Admin Account: super@gmail.com</span>
+            <span className="text-emerald-600 dark:text-emerald-400 font-semibold">Super Admin Account: super@gmail.com</span>
           </div>
         </div>
 
         {/* Modal: Add New User */}
         {isAddModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
-            <div className="bg-[#0b1d28] border border-emerald-500/30 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden">
-              <div className="px-5 py-4 border-b border-[#183647] flex items-center justify-between bg-[#06141c]">
-                <h3 className="text-sm font-bold text-slate-100 flex items-center gap-2">
-                  <UserPlus className="w-4 h-4 text-emerald-400" /> Add New Portal User
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 dark:bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
+            <div className="bg-white dark:bg-[#0b1d28] border border-slate-200 dark:border-emerald-500/30 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden">
+              <div className="px-5 py-4 border-b border-slate-200 dark:border-[#183647] flex items-center justify-between bg-slate-50 dark:bg-[#06141c]">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                  <UserPlus className="w-4 h-4 text-emerald-500 dark:text-emerald-400" /> Add New Portal User
                 </h3>
                 <button
                   onClick={() => setIsAddModalOpen(false)}
-                  className="p-1 rounded-lg text-slate-400 hover:text-white"
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -252,60 +281,60 @@ export default function UsersPage() {
 
               <form onSubmit={handleAddUser} className="p-5 space-y-4 text-xs">
                 <div>
-                  <label className="text-slate-300 font-semibold block mb-1">Full Name</label>
+                  <label className="text-slate-700 dark:text-slate-300 font-semibold block mb-1">Full Name</label>
                   <input
                     type="text"
                     placeholder="e.g. Rahul Sharma"
                     value={newName}
                     onChange={(e) => setNewName(e.target.value)}
-                    className="w-full bg-[#06141c] border border-[#1b3a4e] rounded-xl px-3.5 py-2.5 text-slate-100 focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-slate-50 dark:bg-[#06141c] border border-slate-200 dark:border-[#1b3a4e] rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-emerald-500"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="text-slate-300 font-semibold block mb-1">Email Address</label>
+                  <label className="text-slate-700 dark:text-slate-300 font-semibold block mb-1">Email Address</label>
                   <input
                     type="email"
                     placeholder="e.g. user@gmail.com"
                     value={newEmail}
                     onChange={(e) => setNewEmail(e.target.value)}
-                    className="w-full bg-[#06141c] border border-[#1b3a4e] rounded-xl px-3.5 py-2.5 text-slate-100 focus:outline-none focus:border-emerald-500 font-mono"
+                    className="w-full bg-slate-50 dark:bg-[#06141c] border border-slate-200 dark:border-[#1b3a4e] rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-emerald-500 font-mono"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="text-slate-300 font-semibold block mb-1">WhatsApp Phone Number</label>
+                  <label className="text-slate-700 dark:text-slate-300 font-semibold block mb-1">WhatsApp Phone Number</label>
                   <input
                     type="text"
                     placeholder="+91 9876543210"
                     value={newPhone}
                     onChange={(e) => setNewPhone(e.target.value)}
-                    className="w-full bg-[#06141c] border border-[#1b3a4e] rounded-xl px-3.5 py-2.5 text-slate-100 focus:outline-none focus:border-emerald-500 font-mono"
+                    className="w-full bg-slate-50 dark:bg-[#06141c] border border-slate-200 dark:border-[#1b3a4e] rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-emerald-500 font-mono"
                   />
                 </div>
 
                 <div>
-                  <label className="text-slate-300 font-semibold block mb-1">System Role Permission</label>
+                  <label className="text-slate-700 dark:text-slate-300 font-semibold block mb-1">System Role Permission</label>
                   <select
                     value={newRole}
                     onChange={(e) => setNewRole(e.target.value as UserRecord["role"])}
-                    className="w-full bg-[#06141c] border border-[#1b3a4e] rounded-xl px-3.5 py-2.5 text-slate-100 focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-slate-50 dark:bg-[#06141c] border border-slate-200 dark:border-[#1b3a4e] rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-emerald-500"
                   >
-                    <option value="Operator">Operator (Campaign & Contacts Access)</option>
-                    <option value="Manager">Manager (Full Dashboard & Device Access)</option>
-                    <option value="Super Admin">Super Admin (Full System Control)</option>
+                    <option value="Operator" className="bg-white dark:bg-[#06141c] text-slate-900 dark:text-slate-100">Operator (Campaign & Contacts Access)</option>
+                    <option value="Manager" className="bg-white dark:bg-[#06141c] text-slate-900 dark:text-slate-100">Manager (Full Dashboard & Device Access)</option>
+                    <option value="Super Admin" className="bg-white dark:bg-[#06141c] text-slate-900 dark:text-slate-100">Super Admin (Full System Control)</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="text-slate-300 font-semibold block mb-1">Initial Password</label>
+                  <label className="text-slate-700 dark:text-slate-300 font-semibold block mb-1">Initial Password</label>
                   <input
                     type="password"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    className="w-full bg-[#06141c] border border-[#1b3a4e] rounded-xl px-3.5 py-2.5 text-slate-100 font-mono"
+                    className="w-full bg-slate-50 dark:bg-[#06141c] border border-slate-200 dark:border-[#1b3a4e] rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-slate-100 font-mono"
                   />
                 </div>
 
@@ -313,7 +342,7 @@ export default function UsersPage() {
                   <button
                     type="button"
                     onClick={() => setIsAddModalOpen(false)}
-                    className="bg-[#06141c] hover:bg-[#183647] text-slate-300 px-4 py-2 rounded-xl"
+                    className="bg-slate-100 dark:bg-[#06141c] hover:bg-slate-200 dark:hover:bg-[#183647] text-slate-700 dark:text-slate-300 px-4 py-2 rounded-xl"
                   >
                     Cancel
                   </button>

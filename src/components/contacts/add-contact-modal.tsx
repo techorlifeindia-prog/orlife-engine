@@ -4,6 +4,8 @@ import { useState } from "react";
 import { X, UserPlus, Check } from "lucide-react";
 import { Contact } from "./contact-table";
 
+import { useConfirmStore } from "@/lib/confirm-store";
+
 interface AddContactModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -21,7 +23,11 @@ export function AddContactModal({ isOpen, onClose, onAddContact }: AddContactMod
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!phone.trim()) {
-      alert("Please enter a valid phone number!");
+      useConfirmStore.getState().showAlert({
+        title: "Phone Number Required",
+        message: "Please enter a valid WhatsApp phone number for the new contact!",
+        type: "warning",
+      });
       return;
     }
 
@@ -39,16 +45,16 @@ export function AddContactModal({ isOpen, onClose, onAddContact }: AddContactMod
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-      <div className="bg-[#0b1d28] border border-[#1b3a4e] text-slate-100 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 dark:bg-black/70 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+      <div className="bg-white dark:bg-[#0b1d28] border border-slate-200 dark:border-[#1b3a4e] text-slate-900 dark:text-slate-100 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
         {/* Modal Header */}
-        <div className="flex justify-between items-center pb-4 mb-4 border-b border-[#183647]">
-          <h2 className="text-lg font-bold flex items-center gap-2 text-slate-100">
-            <UserPlus className="w-5 h-5 text-emerald-400" /> Add New Contact
+        <div className="flex justify-between items-center pb-4 mb-4 border-b border-slate-200 dark:border-[#183647]">
+          <h2 className="text-lg font-bold flex items-center gap-2 text-slate-900 dark:text-slate-100">
+            <UserPlus className="w-5 h-5 text-emerald-500 dark:text-emerald-400" /> Add New Contact
           </h2>
           <button
             onClick={onClose}
-            className="p-1 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors"
+            className="p-1 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -56,60 +62,60 @@ export function AddContactModal({ isOpen, onClose, onAddContact }: AddContactMod
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="text-xs font-semibold text-slate-400 block mb-1.5">Full Name</label>
+            <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 block mb-1.5">Full Name</label>
             <input
               type="text"
               placeholder="e.g. John Doe"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full bg-[#06141c] border border-[#1b3a4e] rounded-xl px-3.5 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
+              className="w-full bg-slate-50 dark:bg-[#06141c] border border-slate-200 dark:border-[#1b3a4e] rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
             />
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-slate-400 block mb-1.5">
-              Phone Number <span className="text-emerald-400">*</span>
+            <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 block mb-1.5">
+              Phone Number <span className="text-emerald-500 dark:text-emerald-400">*</span>
             </label>
             <input
               type="text"
               placeholder="e.g. +919876543210"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              className="w-full bg-[#06141c] border border-[#1b3a4e] rounded-xl px-3.5 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 font-mono transition-all"
+              className="w-full bg-slate-50 dark:bg-[#06141c] border border-slate-200 dark:border-[#1b3a4e] rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 font-mono transition-all"
             />
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-slate-400 block mb-1.5">Segment / Tag</label>
+            <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 block mb-1.5">Segment / Tag</label>
             <select
               value={tag}
               onChange={(e) => setTag(e.target.value)}
-              className="w-full bg-[#06141c] border border-[#1b3a4e] rounded-xl px-3.5 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 font-medium transition-all"
+              className="w-full bg-slate-50 dark:bg-[#06141c] border border-slate-200 dark:border-[#1b3a4e] rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 font-medium transition-all"
             >
-              <option value="Leads">Leads</option>
-              <option value="VIP">VIP</option>
-              <option value="Customers">Customers</option>
-              <option value="Wholesale">Wholesale</option>
+              <option value="Leads" className="bg-white dark:bg-[#06141c] text-slate-900 dark:text-slate-100">Leads</option>
+              <option value="VIP" className="bg-white dark:bg-[#06141c] text-slate-900 dark:text-slate-100">VIP</option>
+              <option value="Customers" className="bg-white dark:bg-[#06141c] text-slate-900 dark:text-slate-100">Customers</option>
+              <option value="Wholesale" className="bg-white dark:bg-[#06141c] text-slate-900 dark:text-slate-100">Wholesale</option>
             </select>
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-slate-400 block mb-1.5">Notes</label>
+            <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 block mb-1.5">Notes</label>
             <input
               type="text"
               placeholder="Additional details (e.g. Inquired for bulk purchase)"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="w-full bg-[#06141c] border border-[#1b3a4e] rounded-xl px-3.5 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
+              className="w-full bg-slate-50 dark:bg-[#06141c] border border-slate-200 dark:border-[#1b3a4e] rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
             />
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-[#183647]">
+          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-200 dark:border-[#183647]">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors"
+              className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
             >
               Cancel
             </button>

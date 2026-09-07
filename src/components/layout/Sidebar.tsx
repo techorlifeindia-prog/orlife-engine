@@ -12,42 +12,35 @@ import {
   Users,
   UserCheck,
   Zap,
+  Bot,
   X,
 } from "lucide-react";
 import { useUIStore } from "@/lib/ui-store";
 
 import { useEffect, useState } from "react";
+import { getInitialSessionInfo } from "@/lib/user-session-utils";
 
 export function Sidebar() {
   const pathname = usePathname();
   const { isMobileSidebarOpen, closeMobileSidebar } = useUIStore();
+  const [mounted, setMounted] = useState(false);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
   useEffect(() => {
-    // Check if impersonating a client (Client View)
-    const impersonating = localStorage.getItem("superadmin_impersonating_client");
-    if (impersonating) {
-      setIsSuperAdmin(false);
-      return;
-    }
+    setMounted(true);
+    setIsSuperAdmin(getInitialSessionInfo().isSuperAdmin);
 
-    // Check logged in user role
-    const savedUser = localStorage.getItem("orlife_current_user");
-    if (savedUser) {
-      try {
-        const parsed = JSON.parse(savedUser);
-        if (parsed.role === "Super Admin" || parsed.phone?.includes("9246574995") || parsed.email === "super@gmail.com") {
-          setIsSuperAdmin(true);
-          return;
-        }
-      } catch (e) {}
-    } else {
-      // Default to true in dev if no user saved yet
-      setIsSuperAdmin(true);
-      return;
-    }
+    const checkRole = () => {
+      setIsSuperAdmin(getInitialSessionInfo().isSuperAdmin);
+    };
 
-    setIsSuperAdmin(false);
+    window.addEventListener("storage", checkRole);
+    window.addEventListener("user_session_changed", checkRole);
+
+    return () => {
+      window.removeEventListener("storage", checkRole);
+      window.removeEventListener("user_session_changed", checkRole);
+    };
   }, []);
 
   const allNavItems = [
@@ -56,11 +49,11 @@ export function Sidebar() {
     { name: "Devices", href: "/devices", icon: MonitorSmartphone, superAdminOnly: false },
     { name: "Send Message", href: "/campaigns", icon: Send, superAdminOnly: false },
     { name: "Templates", href: "/templates", icon: BookTemplate, superAdminOnly: false },
-    { name: "Contacts", href: "/contacts", icon: Users, superAdminOnly: false },
+    { name: "Automation Rules", href: "/automation", icon: Bot, superAdminOnly: false },
     { name: "Users & Staff", href: "/users", icon: UserCheck, superAdminOnly: true },
   ];
 
-  const visibleNavItems = allNavItems.filter((item) => !item.superAdminOnly || isSuperAdmin);
+  const visibleNavItems = allNavItems.filter((item) => !item.superAdminOnly || (mounted && isSuperAdmin));
 
   return (
     <>
@@ -74,7 +67,7 @@ export function Sidebar() {
 
       {/* Sidebar Container */}
       <aside
-        className={`w-64 bg-[#06141b] h-screen fixed md:sticky top-0 left-0 flex flex-col p-4 z-50 border-r border-[#163546] transition-transform duration-300 ${
+        className={`w-64 bg-white dark:bg-[#06141b] h-screen fixed md:sticky top-0 left-0 flex flex-col p-4 z-50 border-r border-slate-200 dark:border-[#163546] transition-transform duration-300 ${
           isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         }`}
       >
@@ -85,17 +78,17 @@ export function Sidebar() {
               <Zap className="w-5 h-5 fill-[#10b981]" />
             </div>
             <div>
-              <h1 className="font-bold text-lg tracking-tight text-white flex items-center gap-1.5">
+              <h1 className="font-bold text-lg tracking-tight text-slate-900 dark:text-white flex items-center gap-1.5">
                 OrLife Connect
               </h1>
-              <p className="text-[11px] text-emerald-400/80 font-mono">CYBERHUB SaaS v2.0</p>
+              <p className="text-[11px] text-emerald-600 dark:text-emerald-400/80 font-mono">CYBERHUB SaaS v2.0</p>
             </div>
           </div>
 
           {/* Close button for Mobile */}
           <button
             onClick={closeMobileSidebar}
-            className="md:hidden p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800"
+            className="md:hidden p-1.5 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
           >
             <X className="w-5 h-5" />
           </button>
@@ -113,10 +106,10 @@ export function Sidebar() {
                 className={`flex items-center gap-3.5 px-3.5 py-3 rounded-xl text-sm font-semibold transition-all ${
                   isActive
                     ? "bg-[#10b981]/15 text-[#10b981] border border-[#10b981]/40 shadow-[0_0_15px_rgba(16,185,129,0.2)]"
-                    : "text-slate-400 hover:text-white hover:bg-slate-800/50 border border-transparent"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/50 border border-transparent"
                 }`}
               >
-                <item.icon className={`w-4 h-4 ${isActive ? "text-[#10b981]" : "text-slate-400"}`} />
+                <item.icon className={`w-4 h-4 ${isActive ? "text-[#10b981]" : "text-slate-500 dark:text-slate-400"}`} />
                 {item.name}
               </Link>
             );
@@ -124,17 +117,17 @@ export function Sidebar() {
         </nav>
 
         {/* Settings Footer */}
-        <div className="mt-auto pt-4 border-t border-[#163546]">
+        <div className="mt-auto pt-4 border-t border-slate-200 dark:border-[#163546]">
           <Link
             href="/settings"
             onClick={closeMobileSidebar}
             className={`flex items-center gap-3.5 px-3.5 py-3 rounded-xl text-sm font-semibold transition-all ${
               pathname === "/settings"
                 ? "bg-[#10b981]/15 text-[#10b981] border border-[#10b981]/40 shadow-[0_0_15px_rgba(16,185,129,0.2)]"
-                : "text-slate-400 hover:text-white hover:bg-slate-800/50 border border-transparent"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/50 border border-transparent"
             }`}
           >
-            <Settings className={`w-4 h-4 ${pathname === "/settings" ? "text-[#10b981]" : "text-slate-400"}`} />
+            <Settings className={`w-4 h-4 ${pathname === "/settings" ? "text-[#10b981]" : "text-slate-500 dark:text-slate-400"}`} />
             Settings
           </Link>
         </div>

@@ -36,15 +36,15 @@ export async function POST(req: Request) {
     });
 
     if (!res.ok) {
-      // Mock successful dispatch for frontend demo testing if Evolution API server is offline
-      console.warn(`Evolution API server offline, simulating message sent to ${cleanNumber}`);
-      return NextResponse.json({ status: 'PENDING', key: { id: `mock_msg_${Date.now()}` }, message: 'Simulated send' });
+      const errorText = await res.text();
+      console.warn(`[API Send Message] Evolution API error (${res.status}):`, errorText);
+      return NextResponse.json({ error: errorText, status: 'FAILED' }, { status: res.status });
     }
 
     const data = await res.json();
     return NextResponse.json(data);
-  } catch (error) {
-    console.warn('Simulating message send response due to API connection state');
-    return NextResponse.json({ status: 'PENDING', key: { id: `mock_msg_${Date.now()}` }, message: 'Simulated send' });
+  } catch (error: any) {
+    console.error('[API Send Message] Exception during send dispatch:', error?.message);
+    return NextResponse.json({ error: error?.message || 'Failed to dispatch message' }, { status: 500 });
   }
 }

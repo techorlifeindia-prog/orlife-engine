@@ -20,6 +20,17 @@ if (!fs.existsSync(SESSIONS_DIR)) {
 // In-memory store for active sessions and latest QR codes
 const sessions = new Map();
 
+// In-memory LRU cache for sent messages to satisfy Baileys Signal retry receipts
+const recentSentMessages = new Map();
+function cacheSentMessage(keyId, message) {
+  if (!keyId || !message) return;
+  recentSentMessages.set(keyId, message);
+  if (recentSentMessages.size > 2000) {
+    const firstKey = recentSentMessages.keys().next().value;
+    if (firstKey) recentSentMessages.delete(firstKey);
+  }
+}
+
 function formatPhoneNumber(rawJid) {
   if (!rawJid) return null;
   const numOnly = rawJid.split(':')[0].split('@')[0].replace(/\D/g, '');
@@ -38,7 +49,14 @@ async function createWhatsAppSession(instanceName) {
   const socket = makeWASocket({
     auth: state,
     printQRInTerminal: false,
-    defaultQueryTimeoutMs: undefined,
+    defaultQueryTimeoutMs: 60000,
+    syncFullHistory: false,
+    getMessage: async (key) => {
+      if (key && key.id && recentSentMessages.has(key.id)) {
+        return recentSentMessages.get(key.id);
+      }
+      return undefined;
+    },
   });
 
   const sessionObj = {
@@ -94,9 +112,11 @@ async function createWhatsAppSession(instanceName) {
         realJid = msg.key.participant;
       }
 
-      let cleanPhone = realJid.split('@')[0].split(':')[0].replace(/\D/g, '');
-      const body = msg.message?.conversation || msg.message?.extendedTextMessage?.text || msg.message?.imageMessage?.caption || '';
+      const isAudio = !!(msg.message?.audioMessage || msg.message?.ptt);
+      const isImage = !!(msg.message?.imageMessage);
+      const body = msg.message?.conversation || msg.message?.extendedTextMessage?.text || msg.message?.imageMessage?.caption || (isAudio ? '[AUDIO_VOICE_NOTE]' : '');
       const pushName = msg.pushName || 'Customer';
+      const cleanPhone = formatPhoneNumber(realJid);
 
       // Store in session contacts for pushName lookups
       if (cleanPhone && cleanPhone.length >= 10 && !cleanPhone.startsWith('14757')) {
@@ -110,7 +130,7 @@ async function createWhatsAppSession(instanceName) {
         pushname: pushName,
         name: pushName,
         message: body,
-        messageType: msg.message?.imageMessage ? 'imageMessage' : 'text',
+        messageType: isAudio ? 'audioMessage' : isImage ? 'imageMessage' : 'text',
         timestamp: msg.messageTimestamp
       };
 
@@ -184,22 +204,40 @@ async function createWhatsAppSession(instanceName) {
   return sessionObj;
 }
 
-// 1. Fetch All Instances (Only return connected instances or active QR sessions)
+// 1. Fetch All Instances (Return both connected and disconnected instances)
 app.get('/instance/fetchInstances', (req, res) => {
   const list = [];
+  const processedKeys = new Set();
+
   sessions.forEach((val, key) => {
-    // Only show if connected ('open') or if actively generating/showing QR
-    if (val.status === 'open' || val.qrCodeBase64) {
-      const phoneOwner = formatPhoneNumber(val.socket?.user?.id || val.state?.creds?.me?.id) || val.owner;
-      const nameOwner = val.socket?.user?.name || val.socket?.user?.notify || val.state?.creds?.me?.name || val.profileName;
-      list.push({
-        instanceName: key,
-        status: val.status,
-        owner: phoneOwner || 'Connected Account',
-        profileName: nameOwner || 'WhatsApp User',
-      });
-    }
+    processedKeys.add(key);
+    const phoneOwner = formatPhoneNumber(val.socket?.user?.id || val.state?.creds?.me?.id) || val.owner;
+    const nameOwner = val.socket?.user?.name || val.socket?.user?.notify || val.state?.creds?.me?.name || val.profileName;
+    list.push({
+      instanceName: key,
+      status: val.status || 'close',
+      owner: phoneOwner || null,
+      profileName: nameOwner || key,
+    });
   });
+
+  // Also check session directories on disk in case session folder exists but session is closed
+  if (fs.existsSync(SESSIONS_DIR)) {
+    const folders = fs.readdirSync(SESSIONS_DIR);
+    for (const folder of folders) {
+      if (!processedKeys.has(folder)) {
+        const fullPath = path.join(SESSIONS_DIR, folder);
+        if (fs.statSync(fullPath).isDirectory()) {
+          list.push({
+            instanceName: folder,
+            status: 'close',
+            owner: null,
+            profileName: folder,
+          });
+        }
+      }
+    }
+  }
 
   res.json(list);
 });
@@ -225,7 +263,8 @@ app.get('/instance/connect/:instanceName', async (req, res) => {
   const { instanceName } = req.params;
   let sessionObj = sessions.get(instanceName);
 
-  if (!sessionObj) {
+  if (!sessionObj || sessionObj.status === 'close') {
+    if (sessionObj) sessions.delete(instanceName);
     sessionObj = await createWhatsAppSession(instanceName);
   }
 
@@ -241,20 +280,33 @@ app.get('/instance/connect/:instanceName', async (req, res) => {
   });
 });
 
-// 4. Send Text Message
+// 4a. Send Text Message
 app.post('/message/sendText/:instanceName', async (req, res) => {
   const { instanceName } = req.params;
-  const { number, textMessage } = req.body;
+  const { number, textMessage, text, message } = req.body || {};
 
   const sessionObj = sessions.get(instanceName);
   if (!sessionObj || sessionObj.status !== 'open') {
     return res.status(400).json({ error: 'WhatsApp instance is not connected. Please scan QR first.' });
   }
 
+  if (!number || (typeof number !== 'string' && typeof number !== 'number')) {
+    return res.status(400).json({ error: 'Recipient phone number is required' });
+  }
+
+  const msgContent = typeof textMessage === 'object' && textMessage?.text
+    ? textMessage.text
+    : (typeof textMessage === 'string' ? textMessage : (text || message || ''));
+
+  if (!msgContent) {
+    return res.status(400).json({ error: 'Message content text is required' });
+  }
+
   try {
-    let jid = number;
+    let rawStr = String(number);
+    let jid = rawStr;
     if (!jid.includes('@')) {
-      let cleanNumber = number.replace(/\D/g, '');
+      let cleanNumber = rawStr.replace(/\D/g, '');
       if (cleanNumber.length === 10) {
         cleanNumber = '91' + cleanNumber;
       }
@@ -262,11 +314,41 @@ app.post('/message/sendText/:instanceName', async (req, res) => {
     }
 
     console.log(`[WhatsApp Engine] Sending Text to JID: ${jid}`);
-    const sentMsg = await sessionObj.socket.sendMessage(jid, { text: textMessage.text });
+    const sentMsg = await sessionObj.socket.sendMessage(jid, { text: msgContent });
+    if (sentMsg?.key?.id && sentMsg?.message) {
+      cacheSentMessage(sentMsg.key.id, sentMsg.message);
+    }
     res.json({ status: 'SENT', key: sentMsg.key, to: jid });
   } catch (error) {
     console.error('Error sending message:', error);
     res.status(500).json({ error: 'Failed to send WhatsApp message', details: error.message });
+  }
+});
+
+// 4a2. Send Presence Update (Typing / Composing) for Anti-Ban Human Simulation
+app.post('/presence/send/:instanceName', async (req, res) => {
+  const { instanceName } = req.params;
+  const { number, presence } = req.body;
+
+  const sessionObj = sessions.get(instanceName);
+  if (!sessionObj || sessionObj.status !== 'open') {
+    return res.status(400).json({ error: 'WhatsApp instance is not connected.' });
+  }
+
+  try {
+    let jid = number;
+    if (!jid.includes('@')) {
+      let cleanNumber = number.replace(/\D/g, '');
+      if (cleanNumber.length === 10) cleanNumber = '91' + cleanNumber;
+      jid = `${cleanNumber}@s.whatsapp.net`;
+    }
+
+    if (sessionObj.socket?.sendPresenceUpdate) {
+      await sessionObj.socket.sendPresenceUpdate(presence || 'composing', jid);
+    }
+    res.json({ status: 'PRESENCE_SENT', presence: presence || 'composing', to: jid });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to send presence update', details: error.message });
   }
 });
 
@@ -312,6 +394,9 @@ app.post('/message/sendMedia/:instanceName', async (req, res) => {
     };
 
     const sentMsg = await sessionObj.socket.sendMessage(jid, mediaPayload);
+    if (sentMsg?.key?.id && sentMsg?.message) {
+      cacheSentMessage(sentMsg.key.id, sentMsg.message);
+    }
     console.log(`[WhatsApp Engine] Media image successfully sent to ${jid}, Msg ID: ${sentMsg.key?.id}`);
     res.json({ status: 'SENT', key: sentMsg.key, to: `+${cleanNumber}` });
   } catch (error) {

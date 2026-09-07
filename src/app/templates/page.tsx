@@ -121,22 +121,22 @@ export default function TemplatesPage() {
   });
 
   return (
-    <div className="min-h-full pb-10 bg-[#06141b]">
+    <div className="min-h-full pb-10 bg-slate-50 dark:bg-[#06141b]">
       <Header title="Message Templates Manager" />
 
       <div className="px-3 py-4 w-full space-y-5">
         {/* Banner Section */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-[#0b1d28] border border-[#1b3a4e] p-5 rounded-2xl shadow-lg">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white dark:bg-[#0b1d28] border border-slate-200 dark:border-[#1b3a4e] p-5 rounded-2xl shadow-lg">
           <div>
-            <h2 className="text-xl font-bold flex items-center gap-2 text-slate-100">
-              <BookTemplate className="w-5 h-5 text-emerald-400" />
+            <h2 className="text-xl font-bold flex items-center gap-2 text-slate-900 dark:text-slate-100">
+              <BookTemplate className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
               Reusable Message Templates
-              <span className="text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2.5 py-0.5 rounded-full ml-2">
+              <span className="text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 px-2.5 py-0.5 rounded-full ml-2">
                 {templates.length} Active
               </span>
             </h2>
-            <p className="text-slate-400 text-sm mt-1">
-              Create and manage WhatsApp blueprints with dynamic tags (<span className="font-mono text-emerald-400">{"{{name}}"}</span>, <span className="font-mono text-emerald-400">{"{{phone}}"}</span>).
+            <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
+              Create and manage WhatsApp blueprints with dynamic tags (<span className="font-mono text-emerald-600 dark:text-emerald-400">{"{{name}}"}</span>, <span className="font-mono text-emerald-600 dark:text-emerald-400">{"{{phone}}"}</span>).
             </p>
           </div>
 
@@ -149,7 +149,7 @@ export default function TemplatesPage() {
         </div>
 
         {/* Filter & Search Bar */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-[#0b1d28] border border-[#1b3a4e] p-4 rounded-2xl shadow-md">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white dark:bg-[#0b1d28] border border-slate-200 dark:border-[#1b3a4e] p-4 rounded-2xl shadow-md">
           <div className="relative w-full md:w-80">
             <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
@@ -157,12 +157,12 @@ export default function TemplatesPage() {
               placeholder="Search templates or content..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-[#06141c] border border-[#1b3a4e] text-slate-100 placeholder:text-slate-500 rounded-xl pl-9 pr-3.5 py-2 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
+              className="w-full bg-slate-50 dark:bg-[#06141c] border border-slate-200 dark:border-[#1b3a4e] text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-xl pl-9 pr-3.5 py-2 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-500 hover:text-slate-300"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
               >
                 Clear
               </button>
@@ -178,7 +178,7 @@ export default function TemplatesPage() {
                 className={`text-xs px-3.5 py-1.5 rounded-xl font-semibold transition-all shrink-0 ${
                   selectedCategory === cat
                     ? "bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20"
-                    : "bg-[#06141c] text-slate-400 hover:text-slate-200 hover:bg-[#0d2330] border border-[#183647]"
+                    : "bg-slate-50 dark:bg-[#06141c] text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-[#0d2330] border border-slate-200 dark:border-[#183647]"
                 }`}
               >
                 {cat}
@@ -190,9 +190,9 @@ export default function TemplatesPage() {
         {/* Templates Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-5">
           {filteredTemplates.length === 0 ? (
-            <div className="col-span-full py-16 text-center text-slate-400 border border-dashed border-[#1b3a4e] rounded-2xl bg-[#0b1d28]/40">
-              <BookTemplate className="w-10 h-10 mx-auto text-slate-500/60 mb-2" />
-              <p className="font-semibold text-sm text-slate-300">No message templates found.</p>
+            <div className="col-span-full py-16 text-center text-slate-500 dark:text-slate-400 border border-dashed border-slate-300 dark:border-[#1b3a4e] rounded-2xl bg-slate-100/50 dark:bg-[#0b1d28]/40">
+              <BookTemplate className="w-10 h-10 mx-auto text-slate-400 dark:text-slate-500/60 mb-2" />
+              <p className="font-semibold text-sm text-slate-800 dark:text-slate-300">No message templates found.</p>
               <p className="text-xs mt-1 text-slate-500">Try creating a new template or clearing your search filters.</p>
             </div>
           ) : (

@@ -95,7 +95,8 @@ OrLife Connect is a high-performance, enterprise-grade WhatsApp Multi-Account Ma
   - Hides `SaaS Clients` (`/clients`) and `Users & Staff` (`/users`) from Client sidebar navigation.
   - Removes `Super Admin Portal` link from header user dropdown when logged in as a SaaS Client.
 - [x] **Multi-Tenant Device & Campaign Isolation:**
-  - Client accounts (e.g. `Chamunda Industries` `+918002821800`) only view and manage their own connected WhatsApp instances across `/devices`, `/campaigns`, and `/contacts` (Group Extractor).
+  - Dashboard Overview (`/`), Devices (`/devices`), Campaigns (`/campaigns`), and Contacts (`/contacts`) now strictly use `getFilteredInstancesForUser()`.
+  - Client accounts (e.g. `Chamunda Industries` `+918002821800`) only view and manage their own connected WhatsApp instances. Other users' accounts/devices will NEVER appear on their dashboard overview or device lists.
   - Super Admin (`+919246574995`) maintains full visibility across all client instances.
 - [x] **AOC WhatsApp 4-Digit OTP Authentication:**
   - Integrated AOC Portal WhatsApp API (`https://api.aoc-portal.com/v1/whatsapp` & `/v1/messages` using `AOC_SENDER_NUMBER="919642218004"`).
@@ -104,6 +105,25 @@ OrLife Connect is a high-performance, enterprise-grade WhatsApp Multi-Account Ma
 - [x] **Standalone Clean Login UI:**
   - Removed left Sidebar overlay on `/login` route.
   - Cleared default phone/email inputs and renamed portal title to `OrLife Connect SaaS Portal`.
+- [x] **Light Mode Theme Engine Fix (100% Page Coverage):**
+  - Configured `@custom-variant dark (&:where(.dark, .dark *));` in [`globals.css`](file:///c:/Project/orlife-connect/src/app/globals.css) for Tailwind v4 custom dark mode selector.
+  - Made root `<body>` in [`layout.tsx`](file:///c:/Project/orlife-connect/src/app/layout.tsx), [`AppLayout.tsx`](file:///c:/Project/orlife-connect/src/components/layout/AppLayout.tsx), [`Sidebar.tsx`](file:///c:/Project/orlife-connect/src/components/layout/Sidebar.tsx), and [`Header.tsx`](file:///c:/Project/orlife-connect/src/components/layout/Header.tsx) dynamically switch between Light Mode (`bg-slate-50` / `bg-white`) and Dark Mode (`bg-[#06141b]`).
+  - Refactored **100% of SaaS application pages & modals** to support clean Apple Light Mode (`bg-white`, `bg-slate-50`, `border-slate-200`, `text-slate-900`) and Obsidian Dark Mode (`bg-[#0b1d28]`, `bg-[#06141c]`, `border-[#1b3a4e]`, `text-slate-100`):
+    - Dashboard Overview (`/`)
+    - SaaS Clients Portal (`/clients`)
+    - Send Message / Campaign Builder (`/campaigns`)
+    - Message Templates Manager (`/templates`)
+    - Contacts Hub & Group Extractor (`/contacts` & `AddContactModal`)
+    - System Settings & AI Hub (`/settings` & `ApiConfigModal`)
+    - Users & Staff Management (`/users` & Add User Modal)
+    - WhatsApp Devices (`/devices`, `DeviceCard`, `QRModal`, `TestModal`)
+- [x] **Global Confirm & Alert Dialog System (`Rule 3` & `Rule 9` Compliance):**
+  - Built Zustand-backed global dialog store [`confirm-store.ts`](file:///c:/Project/orlife-connect/src/lib/confirm-store.ts) (`useConfirmStore`) and reusable modal component [`confirm-dialog.tsx`](file:///c:/Project/orlife-connect/src/components/ui/confirm-dialog.tsx).
+  - Replaced raw browser popups (`alert()` and `confirm()`) across all pages (`/clients`, `/devices`, `/users`, `/contacts`, `/settings`) with high-contrast, theme-responsive glassmorphic dialogs (`info`, `success`, `warning`, `danger`).
+  - Mounted `<ConfirmDialog />` globally in [`AppLayout.tsx`](file:///c:/Project/orlife-connect/src/components/layout/AppLayout.tsx).
+- [x] **Unified 3-Tab WhatsApp Center (`/campaigns`):**
+  - Integrated 3-Tab Workflow: **Tab 1 (`Status & Speed`)**, **Tab 2 (`Groups & Audience`)**, and **Tab 3 (`Schedule & Dispatch`)**.
+  - Includes Anti-Ban Speed selector (`Slow`, `Normal`, `Turbo`), Anti-Ban protection guidelines, Custom Broadcast Group Creator, Native WhatsApp Group Fetcher & Extractor with real-time **Group Search Box**, **Group Save** (extracts contacts to Saved Groups list & LocalStorage), **CSV Export** (downloads `.csv` file), Instant vs Scheduled Delivery, and **Right-side Live Campaigns Logs Table** (`RECEIVER`, `MESSAGE`, `TIME`, `STATUS`).
 - [x] **Git Repository Discipline:**
   - Configured `.gitignore` to exclude WhatsApp session files (`whatsapp-engine/sessions`) and temporary scratch files.
   - Local commit saved on `master` branch (`commit 5c45db67c54d915840cca3e7b5ad3cc31eb5ee60`).

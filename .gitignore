@@ -38,5 +38,9 @@ yarn-error.log*
 
 # whatsapp sessions & temporary scratch
 whatsapp-engine/sessions
+whatsapp-engine/node_modules
+whatsapp-engine/ai-config.json
+.vscode
 /scratch
+
 

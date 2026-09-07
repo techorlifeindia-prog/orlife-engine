@@ -8,11 +8,13 @@ import { StatCards } from "@/components/dashboard/stat-cards";
 import { ActivityChart } from "@/components/dashboard/activity-chart";
 import { TrafficWidget } from "@/components/dashboard/traffic-widget";
 
+// Main OrLife Connect SaaS Dashboard Page Component
 export default function DashboardPage() {
   const [instances, setInstances] = useState<Instance[]>([]);
   const [loading, setLoading] = useState(true);
   const [engineOnline, setEngineOnline] = useState(false);
 
+  // Load and strictly filter live WhatsApp instances based on logged-in SaaS client user role
   const loadDashboardData = async () => {
     setLoading(true);
     try {
@@ -35,7 +37,7 @@ export default function DashboardPage() {
     <div className="min-h-full pb-8">
       <Header title="Dashboard Overview" />
 
-      <div className="px-3 py-4 w-full space-y-5">
+      <div className="px-3 py-2 w-full space-y-3">
         {/* Top Metric Cards */}
         <StatCards instances={instances} loading={loading} engineOnline={engineOnline} />
 
