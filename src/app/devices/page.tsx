@@ -8,7 +8,6 @@ import { getFilteredInstancesForUser } from "@/lib/user-session-utils";
 import { QRModal } from "@/components/devices/qr-modal";
 import { TestModal } from "@/components/devices/test-modal";
 import { DeviceCard } from "@/components/devices/device-card";
-
 import { useConfirmStore } from "@/lib/confirm-store";
 
 export default function DevicesPage() {
@@ -26,6 +25,20 @@ export default function DevicesPage() {
   const [isCreating, setIsCreating] = useState(false);
 
   const [currentUser, setCurrentUser] = useState<{ role?: string; phone?: string; email?: string } | null>(null);
+
+  // Device custom labels — persisted in localStorage
+  const [deviceLabels, setDeviceLabels] = useState<Record<string, string>>(() => {
+    if (typeof window === "undefined") return {};
+    try {
+      return JSON.parse(localStorage.getItem("orlife_device_labels") || "{}");
+    } catch { return {}; }
+  });
+
+  const handleSaveLabel = (instanceName: string, label: string) => {
+    const updated = { ...deviceLabels, [instanceName]: label };
+    setDeviceLabels(updated);
+    localStorage.setItem("orlife_device_labels", JSON.stringify(updated));
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -118,6 +131,7 @@ export default function DevicesPage() {
               <DeviceCard
                 key={device.instanceName || idx}
                 device={device}
+                customLabel={deviceLabels[device.instanceName]}
                 isMenuOpen={activeMenu === device.instanceName}
                 onToggleMenu={() =>
                   setActiveMenu(activeMenu === device.instanceName ? null : device.instanceName)
@@ -133,6 +147,7 @@ export default function DevicesPage() {
                 }}
                 onDisconnect={handleDisconnect}
                 onRefresh={loadData}
+                onSaveLabel={handleSaveLabel}
               />
             ))}
           </div>

@@ -9,32 +9,64 @@ import {
   Trash2,
   RefreshCw,
   FlaskConical,
+  Pencil,
+  Check,
+  X,
 } from "lucide-react";
+import { useState } from "react";
 
 interface DeviceCardProps {
   device: Instance;
   isMenuOpen: boolean;
+  customLabel?: string;
   onToggleMenu: () => void;
   onCloseMenu: () => void;
   onShowQR: (instanceName: string) => void;
   onOpenTest: (device: Instance) => void;
   onDisconnect: (instanceName: string) => void;
   onRefresh: () => void;
+  onSaveLabel: (instanceName: string, label: string) => void;
 }
 
 export function DeviceCard({
   device,
   isMenuOpen,
+  customLabel,
   onToggleMenu,
   onCloseMenu,
   onShowQR,
   onOpenTest,
   onDisconnect,
   onRefresh,
+  onSaveLabel,
 }: DeviceCardProps) {
   const isConnected = device.status === "open";
-  const displayName = device.profileName || device.owner || device.instanceName;
+  const defaultDisplayName = device.profileName || device.owner || device.instanceName;
+  const displayName = customLabel || defaultDisplayName;
   const formattedOwner = device.owner ? `+${device.owner.replace(/^\+/, "")}` : "Not linked";
+
+  // Inline edit state
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState(displayName);
+
+  const handleStartEdit = () => {
+    setEditValue(displayName);
+    setIsEditing(true);
+    onCloseMenu();
+  };
+
+  const handleSaveEdit = () => {
+    const trimmed = editValue.trim();
+    if (trimmed) {
+      onSaveLabel(device.instanceName, trimmed);
+    }
+    setIsEditing(false);
+  };
+
+  const handleCancelEdit = () => {
+    setEditValue(displayName);
+    setIsEditing(false);
+  };
 
   return (
     <div
@@ -50,7 +82,7 @@ export function DeviceCard({
       ></div>
 
       <div className="flex justify-between items-start mb-4 pl-1">
-        <div>
+        <div className="flex-1 min-w-0 pr-2">
           {/* Status Badge */}
           <div className="flex items-center gap-2 mb-2">
             <span
@@ -69,8 +101,48 @@ export function DeviceCard({
             </span>
           </div>
 
-          {/* Profile Name & Number */}
-          <h3 className="font-bold text-xl text-foreground tracking-tight">{displayName}</h3>
+          {/* Profile Name — Inline Edit or Display */}
+          {isEditing ? (
+            <div className="flex items-center gap-2 mt-1">
+              <input
+                type="text"
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleSaveEdit();
+                  if (e.key === "Escape") handleCancelEdit();
+                }}
+                autoFocus
+                className="flex-1 bg-slate-800 border border-emerald-500/60 rounded-xl px-3 py-1.5 text-base font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/50 min-w-0"
+              />
+              <button
+                onClick={handleSaveEdit}
+                className="p-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-lg transition-colors shrink-0"
+                title="Save"
+              >
+                <Check className="w-4 h-4" />
+              </button>
+              <button
+                onClick={handleCancelEdit}
+                className="p-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg transition-colors shrink-0"
+                title="Cancel"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 group/name">
+              <h3 className="font-bold text-xl text-foreground tracking-tight truncate">{displayName}</h3>
+              <button
+                onClick={handleStartEdit}
+                className="opacity-0 group-hover/name:opacity-100 p-1 text-muted-foreground hover:text-emerald-400 transition-all rounded-lg hover:bg-emerald-500/10 shrink-0"
+                title="Edit name"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
           <p className="text-sm font-semibold text-muted-foreground mt-1">{formattedOwner}</p>
         </div>
 
@@ -91,6 +163,16 @@ export function DeviceCard({
           {/* Dropdown Menu Popup */}
           {isMenuOpen && (
             <div className="absolute right-0 top-12 z-50 w-56 rounded-2xl border border-slate-200 dark:border-emerald-500/30 bg-white dark:bg-[#0d1d26] shadow-2xl p-1.5 text-sm animate-in fade-in zoom-in-95 duration-150">
+
+              {/* ✏️ Edit Name */}
+              <button
+                onClick={handleStartEdit}
+                className="w-full flex items-center gap-3 px-3.5 py-2.5 text-left rounded-xl hover:bg-blue-500/10 text-blue-400 font-medium transition-colors"
+              >
+                <Pencil className="w-4 h-4 text-blue-400 shrink-0" />
+                <span>Edit Name</span>
+              </button>
+
               {isConnected && (
                 <button
                   onClick={() => {
