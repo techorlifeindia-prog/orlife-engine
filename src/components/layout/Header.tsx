@@ -75,9 +75,19 @@ export function Header({ title = "Dashboard Overview" }: { title?: string }) {
       phone: editPhone.trim() || "+919246574995",
       password: newPass,
     };
-    localStorage.setItem("orlife_current_user", JSON.stringify(updatedUser));
-    localStorage.setItem("orlife_superadmin_password", newPass);
+
+    if (isImpersonating) {
+      // Client View mode — update the impersonation data
+      const clientData = { ...updatedUser, role: currentUser.role || "Client Account" };
+      localStorage.setItem("superadmin_impersonating_client", JSON.stringify(clientData));
+    } else {
+      // Super Admin mode — update main user + password
+      localStorage.setItem("orlife_current_user", JSON.stringify(updatedUser));
+      localStorage.setItem("orlife_superadmin_password", newPass);
+    }
+
     window.dispatchEvent(new Event("user_session_changed"));
+    setSession(getInitialSessionInfo());
     setEditSavedSuccess(true);
     setTimeout(() => {
       setEditSavedSuccess(false);
