@@ -86,7 +86,7 @@ export default function AutomationRulesPage() {
   // ── Load rules + config from backend or localStorage ──────────────────────
   const loadFromBackend = useCallback(async () => {
     try {
-      const res = await fetch(`${AI_HUB_URL}/config`, { signal: AbortSignal.timeout(3000) });
+      const res = await fetch("/api/ai-hub/config", { signal: AbortSignal.timeout(4000) });
       if (res.ok) {
         const data = await res.json();
         if (data.rules?.length) {
@@ -143,26 +143,13 @@ export default function AutomationRulesPage() {
   const checkOllamaStatus = async () => {
     setOllamaStatus("checking");
     try {
-      // 1. Try local Ollama direct port 11434
-      try {
-        const directRes = await fetch("http://localhost:11434/api/tags", { signal: AbortSignal.timeout(2000) });
-        if (directRes.ok) {
-          const directData = await directRes.json();
-          const modelsList = directData.models?.map((m: any) => typeof m === "string" ? m : m.name) || [];
-          setOllamaStatus("online");
-          setOllamaModels(modelsList);
-          return;
-        }
-      } catch {}
-
-      // 2. Fallback to AI Hub backend /ollama/status
-      const res = await fetch(`${AI_HUB_URL}/ollama/status`, { signal: AbortSignal.timeout(4000) });
+      const res = await fetch("/api/ai-hub/ollama-status", { signal: AbortSignal.timeout(5000) });
       if (res.ok) {
         const data = await res.json();
         if (data.status === "ONLINE") {
           setOllamaStatus("online");
           const modelsList = data.models?.map((m: any) => typeof m === "string" ? m : (m.name || String(m))) || [];
-          setOllamaModels(modelsList);
+          setOllamaModels(modelsList.length ? modelsList : ["llama3.2"]);
           return;
         }
       }
@@ -178,11 +165,11 @@ export default function AutomationRulesPage() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedRules));
     // Sync to backend
     try {
-      await fetch(`${AI_HUB_URL}/config`, {
+      await fetch("/api/ai-hub/config", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ rules: updatedRules, systemPrompt, aiEnabled }),
-        signal: AbortSignal.timeout(3000),
+        signal: AbortSignal.timeout(4000),
       });
     } catch { /* backend offline, saved locally */ }
   };
@@ -191,7 +178,7 @@ export default function AutomationRulesPage() {
   const handleSavePrompt = async () => {
     setSavingPrompt(true);
     try {
-      const res = await fetch(`${AI_HUB_URL}/config`, {
+      const res = await fetch("/api/ai-hub/config", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ systemPrompt, aiEnabled, rules }),
@@ -265,7 +252,7 @@ export default function AutomationRulesPage() {
     setSimLoading(true);
     setSimResult(null);
     try {
-      const res = await fetch(`${AI_HUB_URL}/ai-hub/simulate`, {
+      const res = await fetch("/api/ai-hub/simulate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: simMessage, systemPrompt }),
@@ -273,7 +260,7 @@ export default function AutomationRulesPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        setSimResult({ matchedKeyword: data.matchedKeyword, matchType: data.matchType || data.source, reply: data.reply, source: data.source });
+        setSimResult({ matchedKeyword: data.matchedKeyword, matchType: data.matchType || data.source, reply: data.reply || data.response, source: data.source });
       } else {
         // Local keyword matching fallback
         runLocalSimulator();
@@ -305,7 +292,7 @@ export default function AutomationRulesPage() {
     setAiEnabled(newState);
     localStorage.setItem("orlife_ai_enabled", String(newState));
     try {
-      await fetch(`${AI_HUB_URL}/config`, {
+      await fetch("/api/ai-hub/config", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ aiEnabled: newState, systemPrompt, rules }),
