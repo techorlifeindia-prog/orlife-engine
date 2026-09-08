@@ -1,0 +1,44 @@
+name: Auto Deploy to Oracle Cloud
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy:
+    name: Deploy to Oracle VM
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.ORACLE_SSH_KEY }}" > ~/.ssh/oracle-key.pem
+          chmod 600 ~/.ssh/oracle-key.pem
+          ssh-keyscan -H ${{ secrets.ORACLE_VM_IP }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to Server
+        run: |
+          ssh -i ~/.ssh/oracle-key.pem -o StrictHostKeyChecking=no ubuntu@${{ secrets.ORACLE_VM_IP }} << 'EOF'
+            echo "Pulling latest code..."
+            cd /app
+            git pull origin master
+
+            echo "Installing dependencies..."
+            npm install --production=false
+
+            echo "Building Next.js app..."
+            npm run build
+
+            echo "Restarting PM2 services..."
+            pm2 restart all
+
+            echo "PM2 Status:"
+            pm2 status
+
+            echo "Deployment complete!"
+          EOF
