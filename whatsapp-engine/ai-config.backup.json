@@ -1,0 +1,167 @@
+{
+  "systemPrompt": "You are Rani Local, a friendly human customer support executive from Chamunda Industries (Brand: OrLife), Hyderabad. Website: orlifeindia.com. WE SELL: Mobile batteries, chargers, cables, earphones, and mobile accessories.\n\nSTRICT RULES:\n1. ABSOLUTELY NO HALLUCINATION / NO GUESSING: Never invent specific model names, brand names, prices, or stock details. NEVER say we don't sell batteries.\n2. IF ANSWER NOT KNOWN OR ASKED FOR SPECIFIC MODEL/PRICE: Always reply professionally in Hinglish: 'Ji, iski jaankari main team se check karke aapko batati hoon. Aap detail share kar dijiye.'\n3. Keep replies 1 ultra-short natural sentence (max 12 words). Reply in casual human Hinglish/Hindi.",
+  "instances": {
+    "default": {
+      "systemPrompt": "You are Rani Local, a friendly human customer support executive from Chamunda Industries (Brand: OrLife), Hyderabad. Website: orlifeindia.com. WE SELL: Mobile batteries, chargers, cables, earphones, and mobile accessories.\n\nSTRICT RULES:\n1. ABSOLUTELY NO HALLUCINATION / NO GUESSING: Never invent specific model names, brand names, prices, or stock details. NEVER say we don't sell batteries.\n2. IF ANSWER NOT KNOWN OR ASKED FOR SPECIFIC MODEL/PRICE: Always reply professionally in Hinglish: 'Ji, iski jaankari main team se check karke aapko batati hoon. Aap detail share kar dijiye.'\n3. Keep replies 1 ultra-short natural sentence (max 12 words). Reply in casual human Hinglish/Hindi.",
+      "rules": [
+        {
+          "id": "r1",
+          "keyword": "HI",
+          "matchType": "Contains",
+          "replyText": "Namaste! Main Rani, OrLife se 😊. Kaise help karoon?",
+          "enabled": true
+        },
+        {
+          "id": "r2",
+          "keyword": "PRICE",
+          "matchType": "Contains",
+          "replyText": "Aapka mobile model number kya hai? Main price check karke batati hoon.",
+          "enabled": true
+        },
+        {
+          "id": "r3",
+          "keyword": "HELP",
+          "matchType": "Exact",
+          "replyText": "Ji Rani baat kar rahi hoon. Aap apna sawaal batayein!",
+          "enabled": true
+        },
+        {
+          "id": "r4",
+          "keyword": "HOURS",
+          "matchType": "Contains",
+          "replyText": "Office timing: Mon-Sat, 9 AM se 7 PM tak.",
+          "enabled": true
+        }
+      ],
+      "aiEnabled": true,
+      "ollamaEnabled": true,
+      "minDelaySec": 10,
+      "maxDelaySec": 20,
+      "minDelayMs": 10000,
+      "maxDelayMs": 20000,
+      "mode": "orlife_ai",
+      "webhookUrl": "",
+      "apiKey": "orlife_sec_0wycvgv7mtskd8wk",
+      "rateLimitPerMin": 30
+    },
+    "918002821800": {
+      "tenantId": "chamunda_industrie",
+      "mode": "api_with_ai",
+      "webhookUrl": "",
+      "apiKey": "orlife_sec_sgqf5ntlmtslf2ho",
+      "rateLimitPerMin": 30,
+      "aiModel": "OrLife Flash AI (Self-Hosted Ollama Engine)",
+      "systemPrompt": "You are Rani, a friendly human customer support executive from Chamunda Industries (Brand: OrLife), Hyderabad. Website: orlifeindia.com. WE SELL: Mobile batteries, chargers, cables, earphones, and mobile accessories.\n\nSTRICT RULES:\n1. ABSOLUTELY NO HALLUCINATION / NO GUESSING: Never invent specific model names, brand names, prices, or stock details. NEVER say we don't sell batteries.\n2. IF ANSWER NOT KNOWN OR ASKED FOR SPECIFIC MODEL/PRICE: Always reply professionally in Hinglish: 'Ji, iski jaankari main team se check karke aapko batati hoon. Aap detail share kar dijiye.'\n3. Keep replies 1 ultra-short natural sentence (max 12 words). Reply in casual human Hinglish/Hindi.",
+      "rules": [
+        {
+          "id": "r1",
+          "keyword": "HI",
+          "matchType": "Contains",
+          "replyText": "Namaste! Main Rani, OrLife se 😊. Kaise help karoon?",
+          "enabled": true
+        },
+        {
+          "id": "r2",
+          "keyword": "PRICE",
+          "matchType": "Contains",
+          "replyText": "Aapka mobile model number kya hai? Main price check karke batati hoon.",
+          "enabled": true
+        },
+        {
+          "id": "r3",
+          "keyword": "HELP",
+          "matchType": "Exact",
+          "replyText": "Ji Rani baat kar rahi hoon. Aap apna sawaal batayein!",
+          "enabled": true
+        },
+        {
+          "id": "r4",
+          "keyword": "HOURS",
+          "matchType": "Contains",
+          "replyText": "Office timing: Mon-Sat, 9 AM se 7 PM tak.",
+          "enabled": true
+        }
+      ],
+      "aiEnabled": true,
+      "ollamaEnabled": true,
+      "minDelaySec": 10,
+      "maxDelaySec": 20,
+      "minDelayMs": 10000,
+      "maxDelayMs": 20000,
+      "instanceName": "918002821800"
+    },
+    "919246574995": {
+      "tenantId": "chit_fund_khatahis",
+      "mode": "broadcast_only",
+      "webhookUrl": "",
+      "apiKey": "orlife_sec_rwaylgeqmtslptzy",
+      "rateLimitPerMin": 30,
+      "aiModel": "OrLife Flash AI (Self-Hosted Ollama Engine)",
+      "systemPrompt": "You are Rani, a friendly human customer support executive from Chamunda Industries (Brand: OrLife), Hyderabad. Website: orlifeindia.com. WE SELL: Mobile batteries, chargers, cables, earphones, and mobile accessories.\n\nSTRICT RULES:\n1. ABSOLUTELY NO HALLUCINATION / NO GUESSING: Never invent specific model names, brand names, prices, or stock details. NEVER say we don't sell batteries.\n2. IF ANSWER NOT KNOWN OR ASKED FOR SPECIFIC MODEL/PRICE: Always reply professionally in Hinglish: 'Ji, iski jaankari main team se check karke aapko batati hoon. Aap detail share kar dijiye.'\n3. Keep replies 1 ultra-short natural sentence (max 12 words). Reply in casual human Hinglish/Hindi.",
+      "rules": [
+        {
+          "id": "r1",
+          "keyword": "HI",
+          "matchType": "Contains",
+          "replyText": "Namaste! Main Rani, OrLife se 😊. Kaise help karoon?",
+          "enabled": true
+        },
+        {
+          "id": "r2",
+          "keyword": "PRICE",
+          "matchType": "Contains",
+          "replyText": "Aapka mobile model number kya hai? Main price check karke batati hoon.",
+          "enabled": true
+        },
+        {
+          "id": "r3",
+          "keyword": "HELP",
+          "matchType": "Exact",
+          "replyText": "Ji Rani baat kar rahi hoon. Aap apna sawaal batayein!",
+          "enabled": true
+        },
+        {
+          "id": "r4",
+          "keyword": "HOURS",
+          "matchType": "Contains",
+          "replyText": "Office timing: Mon-Sat, 9 AM se 7 PM tak.",
+          "enabled": true
+        }
+      ],
+      "aiEnabled": true,
+      "ollamaEnabled": true,
+      "minDelaySec": 10,
+      "maxDelaySec": 20,
+      "minDelayMs": 10000,
+      "maxDelayMs": 20000,
+      "instanceName": "919246574995"
+    },
+    "OrLife Local": {
+      "instanceName": "OrLife Local",
+      "tenantId": "Chamunda Industries",
+      "mode": "orlife_ai",
+      "webhookUrl": "",
+      "apiKey": "orlife_sec_0wycvgv7mtskd8wk",
+      "rateLimitPerMin": 15,
+      "systemPrompt": "You are Rani Local, a friendly human customer support executive from Chamunda Industries (Brand: OrLife), Hyderabad. Website: orlifeindia.com. WE SELL: Mobile batteries, chargers, cables, earphones, and mobile accessories.\n\nSTRICT RULES:\n1. ABSOLUTELY NO HALLUCINATION / NO GUESSING: Never invent specific model names, brand names, prices, or stock details. NEVER say we don't sell batteries.\n2. IF ANSWER NOT KNOWN OR ASKED FOR SPECIFIC MODEL/PRICE: Always reply professionally in Hinglish: 'Ji, iski jaankari main team se check karke aapko batati hoon. Aap detail share kar dijiye.'\n3. Keep replies 1 ultra-short natural sentence (max 12 words). Reply in casual human Hinglish/Hindi.",
+      "aiEnabled": true,
+      "minDelaySec": 15,
+      "maxDelaySec": 20,
+      "minDelayMs": 10000,
+      "maxDelayMs": 20000,
+      "aiName": "Rani"
+    }
+  },
+  "aiEnabled": true,
+  "ollamaEnabled": true,
+  "minDelaySec": 15,
+  "maxDelaySec": 20,
+  "minDelayMs": 10000,
+  "maxDelayMs": 20000,
+  "aiModel": "OrLife Flash AI (Self-Hosted Ollama Engine)",
+  "mode": "orlife_ai",
+  "webhookUrl": "",
+  "apiKey": "orlife_sec_0wycvgv7mtskd8wk",
+  "tenantId": "Chamunda Industries",
+  "rateLimitPerMin": 15
+}

@@ -1,16 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Header } from "@/components/layout/Header";
-import { Plus, RefreshCw, Server, Wifi, WifiOff, Activity, CheckCircle2 } from "lucide-react";
+import { Plus, RefreshCw, Server, Wifi, WifiOff, Activity, CheckCircle2, ShieldAlert } from "lucide-react";
 import { fetchInstances, createInstance, logoutInstance, Instance } from "@/lib/api-client";
-import { getFilteredInstancesForUser } from "@/lib/user-session-utils";
+import { getFilteredInstancesForUser, saveClientCreatedDevice, getInitialSessionInfo } from "@/lib/user-session-utils";
 import { QRModal } from "@/components/devices/qr-modal";
 import { TestModal } from "@/components/devices/test-modal";
 import { DeviceCard } from "@/components/devices/device-card";
 import { useConfirmStore } from "@/lib/confirm-store";
 
 export default function DevicesPage() {
+  const router = useRouter();
   const [instances, setInstances] = useState<Instance[]>([]);
   const [loading, setLoading] = useState(true);
   const [engineStatus, setEngineStatus] = useState<"checking" | "online" | "offline">("checking");
@@ -20,12 +22,13 @@ export default function DevicesPage() {
   // Test modal & active dropdown state
   const [testDevice, setTestDevice] = useState<Instance | null>(null);
   const [isTestOpen, setIsTestOpen] = useState(false);
+
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
 
   const [newInstanceName, setNewInstanceName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
 
-  const [currentUser, setCurrentUser] = useState<{ role?: string; phone?: string; email?: string } | null>(null);
+  const [sessionInfo, setSessionInfo] = useState(() => getInitialSessionInfo());
 
   // Device custom labels — persisted in localStorage
   const [deviceLabels, setDeviceLabels] = useState<Record<string, string>>(() => {
@@ -34,6 +37,9 @@ export default function DevicesPage() {
       return JSON.parse(localStorage.getItem("orlife_device_labels") || "{}");
     } catch { return {}; }
   });
+
+  const isClientView = sessionInfo.isClientView;
+  const isSingleDeviceLimitReached = isClientView && instances.length >= 1;
 
   const handleSaveLabel = (instanceName: string, label: string) => {
     const updated = { ...deviceLabels, [instanceName]: label };
@@ -48,7 +54,6 @@ export default function DevicesPage() {
       const data = await fetchInstances();
       const filtered = getFilteredInstancesForUser(data);
       setInstances(filtered);
-      // Engine is reachable if fetchInstances finishes cleanly
       setEngineStatus("online");
     } catch (e) {
       console.error("Engine check failed:", e);
@@ -58,6 +63,7 @@ export default function DevicesPage() {
   };
 
   useEffect(() => {
+    setSessionInfo(getInitialSessionInfo());
     loadData();
     const handleOutsideClick = () => setActiveMenu(null);
     window.addEventListener("click", handleOutsideClick);
@@ -65,8 +71,19 @@ export default function DevicesPage() {
   }, []);
 
   const handleCreateAndConnect = async () => {
+    if (isSingleDeviceLimitReached) {
+      useConfirmStore.getState().showConfirm({
+        title: "Single Device Limit Reached",
+        message: "Client accounts are restricted to 1 active WhatsApp device. Disconnect your existing device first.",
+        type: "danger",
+        confirmText: "Understood",
+        onConfirm: () => {},
+      });
+      return;
+    }
     const name = newInstanceName.trim() || `device_${Date.now()}`;
     setIsCreating(true);
+    saveClientCreatedDevice(name);
     await createInstance(name);
     setIsCreating(false);
     setNewInstanceName("");
@@ -141,23 +158,30 @@ export default function DevicesPage() {
               <span className="hidden sm:inline">Refresh Health</span>
             </button>
 
-            <div className="flex items-center gap-2 flex-1 md:flex-initial">
-              <input
-                type="text"
-                placeholder="Instance Name (e.g. Sales)"
-                value={newInstanceName}
-                onChange={(e) => setNewInstanceName(e.target.value)}
-                className="px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-[#1b3a4e] bg-slate-50 dark:bg-[#06141c] text-slate-900 dark:text-white text-xs focus:outline-none focus:border-[#10b981] font-medium w-full sm:w-48"
-              />
-              <button
-                onClick={handleCreateAndConnect}
-                disabled={isCreating}
-                className="bg-[#10b981] hover:bg-emerald-400 text-slate-950 font-extrabold px-4 py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 shadow-md shadow-[#10b981]/20 active:scale-95 transition-all shrink-0 disabled:opacity-50 cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                {isCreating ? "Creating..." : "Link New Device"}
-              </button>
-            </div>
+            {isSingleDeviceLimitReached ? (
+              <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-xs font-semibold shrink-0">
+                <ShieldAlert className="w-4 h-4 text-amber-500 shrink-0" />
+                <span>Single Device Limit (1/1 Active)</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 flex-1 md:flex-initial">
+                <input
+                  type="text"
+                  placeholder="Instance Name (e.g. Sales)"
+                  value={newInstanceName}
+                  onChange={(e) => setNewInstanceName(e.target.value)}
+                  className="px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-[#1b3a4e] bg-slate-50 dark:bg-[#06141c] text-slate-900 dark:text-white text-xs focus:outline-none focus:border-[#10b981] font-medium w-full sm:w-48"
+                />
+                <button
+                  onClick={handleCreateAndConnect}
+                  disabled={isCreating}
+                  className="bg-[#10b981] hover:bg-emerald-400 text-slate-950 font-extrabold px-4 py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 shadow-md shadow-[#10b981]/20 active:scale-95 transition-all shrink-0 disabled:opacity-50 cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  {isCreating ? "Creating..." : "Link New Device"}
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -186,6 +210,9 @@ export default function DevicesPage() {
                 onOpenTest={(dev) => {
                   setTestDevice(dev);
                   setIsTestOpen(true);
+                }}
+                onConfigure={() => {
+                  router.push("/automation");
                 }}
                 onDisconnect={handleDisconnect}
                 onRefresh={loadData}

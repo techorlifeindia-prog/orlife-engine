@@ -45,11 +45,13 @@ export async function createInstance(instanceName: string): Promise<boolean> {
 export async function fetchQRCode(instanceName: string): Promise<QRCodeResponse | null> {
   try {
     const res = await fetch(`/api/evolution/qr?instanceName=${encodeURIComponent(instanceName)}`);
-    if (!res.ok) throw new Error('Failed to fetch QR code');
+    if (!res.ok) {
+      const errData = await res.json().catch(() => null);
+      return errData || null;
+    }
     const data = await res.json();
     return data;
-  } catch (error) {
-    console.error('Error fetching QR code:', error);
+  } catch {
     return null;
   }
 }

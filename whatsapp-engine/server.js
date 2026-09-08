@@ -10,6 +10,15 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
+// Prevent transient Baileys socket errors from crashing the server
+process.on('uncaughtException', (err) => {
+  console.error('[WhatsApp Engine] Uncaught Exception caught safely:', err?.message || err);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('[WhatsApp Engine] Unhandled Rejection caught safely:', reason?.message || reason);
+});
+
 const PORT = 8080;
 const SESSIONS_DIR = path.join(__dirname, 'sessions');
 
@@ -19,6 +28,59 @@ if (!fs.existsSync(SESSIONS_DIR)) {
 
 // In-memory store for active sessions and latest QR codes
 const sessions = new Map();
+
+// Per-instance message counters (resets on server restart — persistent version uses file below)
+const messageCounters = new Map(); // instanceName → { sent: number, failed: number }
+const COUNTERS_FILE = path.join(__dirname, 'message_counts.json');
+
+// Load persisted counts from disk on startup
+function loadCounters() {
+  try {
+    if (fs.existsSync(COUNTERS_FILE)) {
+      const data = JSON.parse(fs.readFileSync(COUNTERS_FILE, 'utf8'));
+      for (const [k, v] of Object.entries(data)) {
+        messageCounters.set(k, v);
+      }
+      console.log('[Counter] Loaded persisted message counts from disk.');
+    }
+  } catch (e) {
+    console.warn('[Counter] Could not load counts file:', e.message);
+  }
+}
+
+// Persist counts to disk (debounced — max once every 10s)
+let _saveTimer = null;
+function saveCounters() {
+  if (_saveTimer) return;
+  _saveTimer = setTimeout(() => {
+    try {
+      const obj = {};
+      for (const [k, v] of messageCounters) obj[k] = v;
+      fs.writeFileSync(COUNTERS_FILE, JSON.stringify(obj, null, 2));
+    } catch (e) {
+      console.warn('[Counter] Could not save counts file:', e.message);
+    }
+    _saveTimer = null;
+  }, 10000);
+}
+
+function incrementCounter(instanceName, success = true, source = 'manual') {
+  const current = messageCounters.get(instanceName) || { sent: 0, failed: 0, aiSent: 0, bulkSent: 0 };
+  if (success) {
+    current.sent += 1;
+    if (source === 'ai_auto') {
+      current.aiSent = (current.aiSent || 0) + 1;
+    } else {
+      current.bulkSent = (current.bulkSent || 0) + 1;
+    }
+  } else {
+    current.failed += 1;
+  }
+  messageCounters.set(instanceName, current);
+  saveCounters();
+}
+
+loadCounters();
 
 // In-memory LRU cache for sent messages to satisfy Baileys Signal retry receipts
 const recentSentMessages = new Map();
@@ -100,23 +162,45 @@ async function createWhatsAppSession(instanceName) {
       const fromJid = msg.key.remoteJid;
       if (!fromJid || fromJid === 'status@broadcast' || fromJid.endsWith('@g.us')) continue;
       
-      // Resolve Real Phone JID if incoming message uses LID (Linked Device Identifier)
+      // Skip newsletters / channels / broadcast lists
+      if (fromJid.endsWith('@newsletter') || fromJid.endsWith('@broadcast')) continue;
+
+      // Resolve Real Phone JID if incoming message uses LID (Linked Device Identifier) or multi-device format
       let realJid = fromJid;
-      if (msg.key.remoteJidAlt && msg.key.remoteJidAlt.endsWith('@s.whatsapp.net')) {
-        realJid = msg.key.remoteJidAlt;
-      } else if (msg.key.participant_pn && msg.key.participant_pn.endsWith('@s.whatsapp.net')) {
-        realJid = msg.key.participant_pn;
-      } else if (msg.participant_pn && msg.participant_pn.endsWith('@s.whatsapp.net')) {
-        realJid = msg.participant_pn;
-      } else if (msg.key.participant && msg.key.participant.endsWith('@s.whatsapp.net')) {
-        realJid = msg.key.participant;
+      const possiblePn = 
+        msg.sender_pn ||
+        msg.key?.sender_pn ||
+        msg.senderPn ||
+        msg.key?.senderPn ||
+        msg.key?.remoteJidAlt ||
+        msg.participant_pn ||
+        msg.key?.participant_pn ||
+        msg.participant ||
+        msg.key?.participant;
+
+      if (possiblePn && typeof possiblePn === 'string' && (possiblePn.includes('@s.whatsapp.net') || possiblePn.includes('@lid'))) {
+        realJid = possiblePn;
+      }
+
+      const cleanPhone = formatPhoneNumber(realJid) || formatPhoneNumber(fromJid);
+
+      // Only skip if we couldn't resolve any valid phone number OR JID
+      if (!cleanPhone && realJid.includes('@lid')) {
+        console.log(`[WhatsApp Engine] Skipping unresolvable LID message: ${realJid}`);
+        continue;
       }
 
       const isAudio = !!(msg.message?.audioMessage || msg.message?.ptt);
       const isImage = !!(msg.message?.imageMessage);
       const body = msg.message?.conversation || msg.message?.extendedTextMessage?.text || msg.message?.imageMessage?.caption || (isAudio ? '[AUDIO_VOICE_NOTE]' : '');
       const pushName = msg.pushName || 'Customer';
-      const cleanPhone = formatPhoneNumber(realJid);
+
+      // Skip messages from our own linked numbers (prevents loop)
+      const ownNumbers = ['918002821800', '919346037212'];
+      const numOnly = (cleanPhone || '').replace(/\D/g, '');
+      if (ownNumbers.some(own => numOnly.includes(own) || own.includes(numOnly))) {
+        continue;
+      }
 
       // Store in session contacts for pushName lookups
       if (cleanPhone && cleanPhone.length >= 10 && !cleanPhone.startsWith('14757')) {
@@ -149,6 +233,7 @@ async function createWhatsAppSession(instanceName) {
               messageText: body
             })
           }).catch(err => console.error('[WhatsApp Engine] Port 8090 AI Dispatch error:', err.message));
+
         }
 
         // 2. Forward to Port 8001 and 7001 webhooks
@@ -193,9 +278,14 @@ async function createWhatsAppSession(instanceName) {
       sessionObj.status = 'close';
       sessionObj.qrCodeBase64 = null;
 
-      const isLoggedOut = statusCode === DisconnectReason.loggedOut || statusCode === 401;
+      if (sessionObj.isManualDelete) {
+        console.log(`[WhatsApp Engine] Instance "${instanceName}" was manually deleted. Skipping auto-reconnect.`);
+        return;
+      }
+
+      const isLoggedOut = statusCode === DisconnectReason.loggedOut || statusCode === 401 || statusCode === 403;
       if (isLoggedOut) {
-        console.log(`[WhatsApp Engine] Session logged out (401) for ${instanceName}. Purging expired credentials.`);
+        console.log(`[WhatsApp Engine] Session logged out / expired (${statusCode}) for ${instanceName}. Purging expired credentials.`);
         const sessionPath = path.join(SESSIONS_DIR, instanceName);
         if (fs.existsSync(sessionPath)) {
           fs.rmSync(sessionPath, { recursive: true, force: true });
@@ -287,10 +377,59 @@ app.get('/instance/connect/:instanceName', async (req, res) => {
   });
 });
 
+const sendRateTracker = new Map();
+
+function getInstanceRateLimit(instanceName) {
+  try {
+    const CONFIG_FILE = path.join(__dirname, 'ai-config.json');
+    if (fs.existsSync(CONFIG_FILE)) {
+      const data = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
+      const key = (instanceName || 'default').trim();
+      const inst = data.instances?.[key] || data.instances?.['OrLife Local'] || data.instances?.['default'] || data.instances?.['OrLifeBot'];
+      if (inst && inst.rateLimitPerMin) {
+        return Number(inst.rateLimitPerMin) || 30;
+      }
+      if (data.rateLimitPerMin) {
+        return Number(data.rateLimitPerMin) || 30;
+      }
+    }
+  } catch (e) {}
+  return 30;
+}
+
+function checkAndRecordRateLimit(instanceName, isOtp = false) {
+  const maxRate = getInstanceRateLimit(instanceName);
+  const now = Date.now();
+  const windowMs = 60 * 1000;
+  const key = (instanceName || 'default').trim().toLowerCase();
+
+  if (!sendRateTracker.has(key)) {
+    sendRateTracker.set(key, []);
+  }
+
+  const validTimestamps = sendRateTracker.get(key).filter(t => now - t < windowMs);
+  sendRateTracker.set(key, validTimestamps);
+
+  // OTP authentication messages bypass strict rate limiter
+  if (isOtp) {
+    validTimestamps.push(now);
+    return { allowed: true, currentRate: validTimestamps.length, maxRate };
+  }
+
+  if (validTimestamps.length >= maxRate) {
+    console.warn(`[WhatsApp Engine] 🛑 Rate limit exceeded for "${instanceName}": ${validTimestamps.length}/${maxRate} msgs in last 60s.`);
+    return { allowed: false, currentRate: validTimestamps.length, maxRate };
+  }
+
+  validTimestamps.push(now);
+  return { allowed: true, currentRate: validTimestamps.length, maxRate };
+}
+
 // 4a. Send Text Message
 app.post('/message/sendText/:instanceName', async (req, res) => {
   const { instanceName } = req.params;
   const { number, textMessage, text, message } = req.body || {};
+  const source = req.headers['x-source'] || 'manual';
 
   const sessionObj = sessions.get(instanceName);
   if (!sessionObj || sessionObj.status !== 'open') {
@@ -309,6 +448,16 @@ app.post('/message/sendText/:instanceName', async (req, res) => {
     return res.status(400).json({ error: 'Message content text is required' });
   }
 
+  const isOtp = msgContent.includes("OrLife Portal Login OTP") || msgContent.includes("verification code") || msgContent.includes("OTP");
+
+  // 🛑 Strict Rate Limit Check across ALL message sources (Max X msgs per minute)
+  const rateLimitCheck = checkAndRecordRateLimit(instanceName, isOtp);
+  if (!rateLimitCheck.allowed) {
+    return res.status(429).json({
+      error: `Rate limit of ${rateLimitCheck.maxRate} messages/minute exceeded for instance "${instanceName}". (${rateLimitCheck.currentRate}/${rateLimitCheck.maxRate} sent in last 60 seconds).`
+    });
+  }
+
   try {
     let rawStr = String(number);
     let jid = rawStr;
@@ -320,17 +469,20 @@ app.post('/message/sendText/:instanceName', async (req, res) => {
       jid = `${cleanNumber}@s.whatsapp.net`;
     }
 
-    console.log(`[WhatsApp Engine] Sending Text to JID: ${jid}`);
+    console.log(`[WhatsApp Engine] Sending Text to JID: ${jid} (source: ${source}, Rate: ${rateLimitCheck.currentRate}/${rateLimitCheck.maxRate})`);
     const sentMsg = await sessionObj.socket.sendMessage(jid, { text: msgContent });
     if (sentMsg?.key?.id && sentMsg?.message) {
       cacheSentMessage(sentMsg.key.id, sentMsg.message);
     }
+    incrementCounter(instanceName, true, source);
     res.json({ status: 'SENT', key: sentMsg.key, to: jid });
   } catch (error) {
     console.error('Error sending message:', error);
+    incrementCounter(instanceName, false, source);
     res.status(500).json({ error: 'Failed to send WhatsApp message', details: error.message });
   }
 });
+
 
 // 4a2. Send Presence Update (Typing / Composing) for Anti-Ban Human Simulation
 app.post('/presence/send/:instanceName', async (req, res) => {
@@ -369,6 +521,14 @@ app.post('/message/sendMedia/:instanceName', async (req, res) => {
     return res.status(400).json({ error: 'WhatsApp instance is not connected. Please scan QR first.' });
   }
 
+  // 🛑 Strict Rate Limit Check for Media
+  const rateLimitCheck = checkAndRecordRateLimit(instanceName, false);
+  if (!rateLimitCheck.allowed) {
+    return res.status(429).json({
+      error: `Rate limit of ${rateLimitCheck.maxRate} messages/minute exceeded for instance "${instanceName}". (${rateLimitCheck.currentRate}/${rateLimitCheck.maxRate} sent in last 60 seconds).`
+    });
+  }
+
   try {
     let cleanNumber = number.replace(/\D/g, '');
     if (cleanNumber.length === 10) cleanNumber = '91' + cleanNumber;
@@ -378,7 +538,7 @@ app.post('/message/sendMedia/:instanceName', async (req, res) => {
     }
 
     const jid = `${cleanNumber}@s.whatsapp.net`;
-    console.log(`[WhatsApp Engine] Preparing Media Image for JID: ${jid}`);
+    console.log(`[WhatsApp Engine] Preparing Media Image for JID: ${jid} (Rate: ${rateLimitCheck.currentRate}/${rateLimitCheck.maxRate})`);
 
     let imageContent;
     let mimeType = 'image/jpeg';
@@ -404,10 +564,12 @@ app.post('/message/sendMedia/:instanceName', async (req, res) => {
     if (sentMsg?.key?.id && sentMsg?.message) {
       cacheSentMessage(sentMsg.key.id, sentMsg.message);
     }
+    incrementCounter(instanceName, true);
     console.log(`[WhatsApp Engine] Media image successfully sent to ${jid}, Msg ID: ${sentMsg.key?.id}`);
     res.json({ status: 'SENT', key: sentMsg.key, to: `+${cleanNumber}` });
   } catch (error) {
     console.error('[WhatsApp Engine] Error sending media message:', error);
+    incrementCounter(instanceName, false);
     res.status(500).json({ error: 'Failed to send WhatsApp media message', details: error.message });
   }
 });
@@ -471,6 +633,39 @@ app.delete('/instance/logout/:instanceName', async (req, res) => {
   }
 
   res.json({ success: true, message: `Instance ${instanceName} deleted` });
+});
+
+// 7. Message Stats (Real Tracking)
+app.get('/stats/all', (req, res) => {
+  let totalSent = 0;
+  let totalFailed = 0;
+  let totalAiSent = 0;
+  let totalBulkSent = 0;
+  const perInstance = {};
+  for (const [name, counts] of messageCounters) {
+    totalSent += counts.sent || 0;
+    totalFailed += counts.failed || 0;
+    const ai = counts.aiSent || 0;
+    const bulk = counts.bulkSent !== undefined ? counts.bulkSent : Math.max(0, (counts.sent || 0) - ai);
+    totalAiSent += ai;
+    totalBulkSent += bulk;
+    perInstance[name] = { ...counts, aiSent: ai, bulkSent: bulk };
+  }
+  res.json({ totalSent, totalFailed, totalAiSent, totalBulkSent, perInstance });
+});
+
+app.get('/stats/:instanceName', (req, res) => {
+  const { instanceName } = req.params;
+  const counts = messageCounters.get(instanceName) || { sent: 0, failed: 0 };
+  res.json({ instanceName, ...counts });
+});
+
+// 7b. Test Counter Increment (Simulate message send test)
+app.post('/test/increment-counter', (req, res) => {
+  const { instanceName = 'OrLife Local', source = 'manual' } = req.body || {};
+  incrementCounter(instanceName, true, source);
+  const counts = messageCounters.get(instanceName) || { sent: 0, failed: 0 };
+  res.json({ success: true, instanceName, currentCounts: counts });
 });
 
 function loadExistingSessions() {

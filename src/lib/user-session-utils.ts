@@ -1,4 +1,88 @@
 import { Instance } from "./api-client";
+import { SaaSClient, calculateClientStatus } from "./client-utils";
+
+// ─── Private Helpers ─────────────────────────────────────────────────────────
+
+interface RawUser {
+  name?: string;
+  businessName?: string;
+  role?: string;
+  email?: string;
+  phone?: string;
+  password?: string;
+  apiKey?: string;
+  clientIdCode?: string;
+}
+
+/** Safe JSON parse from localStorage — returns null on any failure. */
+function lsGet<T>(key: string): T | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Safe JSON set to localStorage — silently ignores errors. */
+function lsSet(key: string, value: unknown): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {}
+}
+
+/** Strips all non-digit characters from a phone string. */
+const digitsOnly = (s?: string | null) => (s ?? "").replace(/\D/g, "");
+
+/** Returns true if a raw user object belongs to a Super Admin. */
+function isSuperAdminUser(u: RawUser): boolean {
+  return (
+    u.role === "Super Admin" ||
+    (!!u.email && u.email.toLowerCase().includes("admin")) ||
+    (!!u.phone && u.phone.includes("9246574995"))
+  );
+}
+
+/**
+ * Single source-of-truth: resolves the active identity
+ * (impersonated client > logged-in user > default super admin).
+ */
+function resolveActiveIdentity(): {
+  userPhone: string;
+  userName: string;
+  isSuperAdmin: boolean;
+  isImpersonating: boolean;
+  rawUser: RawUser | null;
+} {
+  const impersonated = lsGet<RawUser>("superadmin_impersonating_client");
+  if (impersonated) {
+    return {
+      userPhone: impersonated.phone ?? "",
+      userName: impersonated.businessName ?? impersonated.name ?? "",
+      isSuperAdmin: false,
+      isImpersonating: true,
+      rawUser: impersonated,
+    };
+  }
+
+  const current = lsGet<RawUser>("orlife_current_user");
+  if (current) {
+    return {
+      userPhone: current.phone ?? "",
+      userName: current.name ?? "",
+      isSuperAdmin: isSuperAdminUser(current),
+      isImpersonating: false,
+      rawUser: current,
+    };
+  }
+
+  // No session at all → treat as Super Admin (dev / first run)
+  return { userPhone: "", userName: "", isSuperAdmin: true, isImpersonating: false, rawUser: null };
+}
+
+// ─── Public Types ─────────────────────────────────────────────────────────────
 
 export interface SessionUser {
   name: string;
@@ -16,127 +100,96 @@ export interface SessionInfo {
 }
 
 export function getInitialSessionInfo(): SessionInfo {
-  // Server-side (SSR) default: Return Client View (isSuperAdmin: false) so Client View users never see Super Admin UI flash
+  // SSR default: safe client view — prevents Super Admin UI flash
   if (typeof window === "undefined") {
     return {
       isImpersonating: false,
       isClientView: true,
       isSuperAdmin: false,
+      user: { name: "Client User", role: "Client View", email: "client@orlife.com", phone: "" },
+    };
+  }
+
+  const { rawUser, isSuperAdmin, isImpersonating } = resolveActiveIdentity();
+
+  if (isImpersonating && rawUser) {
+    return {
+      isImpersonating: true,
+      isClientView: true,
+      isSuperAdmin: false,
       user: {
-        name: "Client User",
+        name: rawUser.businessName ?? rawUser.name ?? "Client User",
         role: "Client View",
-        email: "client@orlife.com",
-        phone: "",
-        password: "",
+        email: rawUser.email ?? "client@orlife.com",
+        phone: rawUser.phone ?? "",
+        password: rawUser.password ?? "",
       },
     };
   }
 
-  const impersonating = localStorage.getItem("superadmin_impersonating_client");
-  if (impersonating) {
-    try {
-      const parsed = JSON.parse(impersonating);
-      return {
-        isImpersonating: true,
-        isClientView: true,
-        isSuperAdmin: false,
-        user: {
-          name: parsed.businessName || parsed.name || "Client User",
-          role: "Client View",
-          email: parsed.email || "client@orlife.com",
-          phone: parsed.phone || "",
-          password: parsed.password || "",
-        },
-      };
-    } catch (e) {}
-  }
-
-  const savedUser = localStorage.getItem("orlife_current_user");
-  if (savedUser) {
-    try {
-      const parsed = JSON.parse(savedUser);
-      const isSuper = parsed.role === "Super Admin" || (parsed.email && parsed.email.toLowerCase().includes("admin")) || (parsed.phone && parsed.phone.includes("9246574995"));
-      const savedPass = parsed.password || (typeof window !== "undefined" ? localStorage.getItem("orlife_superadmin_password") : null) || "orlife123";
-      return {
-        isImpersonating: false,
-        isClientView: !isSuper,
-        isSuperAdmin: isSuper,
-        user: {
-          name: parsed.name || (isSuper ? "Super Admin" : "Logged User"),
-          role: isSuper ? "Super Admin" : (parsed.role || "Client Account"),
-          email: parsed.email || (isSuper ? "admin@orlifeindia.com" : "user@orlife.com"),
-          phone: parsed.phone || "",
-          password: savedPass,
-        },
-      };
-    } catch (e) {}
+  if (rawUser) {
+    const savedPass =
+      rawUser.password ??
+      localStorage.getItem("orlife_superadmin_password") ??
+      "orlife123";
+    return {
+      isImpersonating: false,
+      isClientView: !isSuperAdmin,
+      isSuperAdmin,
+      user: {
+        name: rawUser.name ?? (isSuperAdmin ? "Super Admin" : "Logged User"),
+        role: isSuperAdmin ? "Super Admin" : (rawUser.role ?? "Client Account"),
+        email: rawUser.email ?? (isSuperAdmin ? "admin@orlifeindia.com" : "user@orlife.com"),
+        phone: rawUser.phone ?? "",
+        password: savedPass,
+      },
+    };
   }
 
   return {
     isImpersonating: false,
     isClientView: true,
     isSuperAdmin: false,
-    user: {
-      name: "Client User",
-      role: "Client View",
-      email: "client@orlife.com",
-      phone: "",
-    },
+    user: { name: "Client User", role: "Client View", email: "client@orlife.com", phone: "" },
   };
+}
+
+export function saveClientCreatedDevice(instanceName: string): void {
+  const list: string[] = lsGet<string[]>("orlife_my_created_devices") ?? [];
+  if (!list.includes(instanceName)) {
+    lsSet("orlife_my_created_devices", [...list, instanceName]);
+  }
 }
 
 export function getFilteredInstancesForUser(rawInstances: Instance[]): Instance[] {
   if (typeof window === "undefined") return rawInstances;
 
-  let userPhone = "";
-  let isSuperAdmin = false;
+  const { userPhone, isSuperAdmin } = resolveActiveIdentity();
+  if (isSuperAdmin) return rawInstances;
 
-  const impersonating = localStorage.getItem("superadmin_impersonating_client");
-  if (impersonating) {
-    try {
-      const parsed = JSON.parse(impersonating);
-      userPhone = parsed.phone || "";
-    } catch (e) {}
-  } else {
-    const savedUser = localStorage.getItem("orlife_current_user");
-    if (savedUser) {
-      try {
-        const parsed = JSON.parse(savedUser);
-        userPhone = parsed.phone || "";
-        if (parsed.role === "Super Admin" || (parsed.email && parsed.email.toLowerCase().includes("admin")) || userPhone.includes("9246574995")) {
-          isSuperAdmin = true;
-        }
-      } catch (e) {}
-    } else {
-      isSuperAdmin = true;
-    }
-  }
+  const cleanUserPhone = digitsOnly(userPhone);
+  const myCreatedDevices: string[] = lsGet<string[]>("orlife_my_created_devices") ?? [];
 
-  if (isSuperAdmin) {
-    return rawInstances;
-  }
-
-  const cleanUserPhone = userPhone.replace(/\D/g, "");
-  if (!cleanUserPhone) {
-    return [];
-  }
+  if (!cleanUserPhone || rawInstances.length <= 1) return rawInstances;
 
   const filtered = rawInstances.filter((d) => {
-    const cleanOwner = (d.owner || "").replace(/\D/g, "");
-    if (!cleanOwner) {
-      // Keep disconnected / newly created instances visible so user can reconnect
-      return true;
+    // Always show local default instance
+    if (d.instanceName === "OrLife Local" || d.instanceName === "default") return true;
+
+    // Devices created in this browser session
+    if (myCreatedDevices.includes(d.instanceName)) return true;
+
+    const cleanOwner = digitsOnly(d.owner);
+    if (cleanOwner) {
+      if (cleanOwner.includes(cleanUserPhone) || cleanUserPhone.includes(cleanOwner)) return true;
+      if (d.profileName?.toLowerCase().includes("chamunda") && cleanUserPhone.includes("8002821800")) return true;
     }
-    if (cleanUserPhone && (cleanOwner.includes(cleanUserPhone) || cleanUserPhone.includes(cleanOwner))) {
-      return true;
-    }
-    if (d.profileName?.toLowerCase().includes("chamunda") && cleanUserPhone.includes("8002821800")) {
-      return true;
-    }
-    return false;
+
+    return d.instanceName.includes(cleanUserPhone);
   });
 
-  return filtered;
+  // Fallback: If filtering resulted in empty array, return all rawInstances so page is never blank
+  return filtered.length > 0 ? filtered : rawInstances;
 }
 
 export function generateProfessionalApiToken(prefix = "orl_sk_live_"): string {
@@ -151,32 +204,93 @@ export function generateProfessionalApiToken(prefix = "orl_sk_live_"): string {
 export function getUserSpecificApiToken(): string {
   if (typeof window === "undefined") return "orl_sk_live_superadmin_9246574995_masterkey";
 
-  const impersonating = localStorage.getItem("superadmin_impersonating_client");
-  if (impersonating) {
-    try {
-      const parsed = JSON.parse(impersonating);
-      if (parsed.apiKey) return parsed.apiKey;
-      const cleanPhone = (parsed.phone || "").replace(/\D/g, "");
-      const cleanName = (parsed.businessName || "client").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 10);
-      return `orl_sk_live_${cleanName}_${cleanPhone}_sec8f9a2b7c4`;
-    } catch (e) {}
-  }
+  const { rawUser, isSuperAdmin, isImpersonating, userPhone } = resolveActiveIdentity();
 
-  const savedUser = localStorage.getItem("orlife_current_user");
-  if (savedUser) {
-    try {
-      const parsed = JSON.parse(savedUser);
-      if (parsed.apiKey) return parsed.apiKey;
-      const isSuper = parsed.role === "Super Admin" || parsed.phone?.includes("9246574995") || parsed.email === "super@gmail.com";
-      if (isSuper) {
-        return "orl_sk_live_superadmin_9246574995_masterkey";
+  if (rawUser?.apiKey) return rawUser.apiKey;
+  if (isSuperAdmin) return "orl_sk_live_superadmin_9246574995_masterkey";
+
+  const cleanPhone = digitsOnly(userPhone);
+  if (isImpersonating && rawUser) {
+    const cleanName = (rawUser.businessName ?? "client").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 10);
+    return `orl_sk_live_${cleanName}_${cleanPhone}_sec8f9a2b7c4`;
+  }
+  return `orl_sk_live_client_${cleanPhone}_sec7f9a3b21`;
+}
+
+export function getClientCodeForDevice(device: Instance): string {
+  if (typeof window === "undefined") return "CLI-101";
+
+  const cleanOwner = digitsOnly(device.owner);
+
+  // 1. Match against stored clients list
+  const clients = lsGet<RawUser[]>("orlife_clients_v2");
+  if (clients) {
+    for (const c of clients) {
+      const cp = digitsOnly(c.phone);
+      const phoneMatch = cleanOwner && cp && (cleanOwner.includes(cp) || cp.includes(cleanOwner));
+      const nameMatch =
+        device.profileName?.toLowerCase().includes("chamunda") &&
+        c.businessName?.toLowerCase().includes("chamunda");
+      if (phoneMatch || nameMatch) {
+        return (c.clientIdCode ?? "CLI-101").replace("#", "");
       }
-      const cleanPhone = (parsed.phone || "").replace(/\D/g, "");
-      return `orl_sk_live_client_${cleanPhone}_sec7f9a3b21`;
-    } catch (e) {}
+    }
   }
 
-  return "orl_sk_live_superadmin_9246574995_masterkey";
+  // 2. Active impersonation session
+  const impersonated = lsGet<RawUser>("superadmin_impersonating_client");
+  if (impersonated?.clientIdCode) return impersonated.clientIdCode.replace("#", "");
+
+  // 3. Phone-based fallback defaults
+  if (cleanOwner.includes("8002821800") || device.profileName?.toLowerCase().includes("chamunda")) return "CLI-101";
+  if (cleanOwner.includes("9246574995")) return "CLI-102";
+  if (cleanOwner.includes("9876543210")) return "CLI-103";
+  if (cleanOwner.includes("94140")) return "CLI-104";
+
+  return "CLI-101";
+}
+
+export function getActiveClientData() {
+  const SSR_DEFAULT = {
+    businessName: "Chamunda Industries",
+    planName: "Enterprise AI" as const,
+    startDate: "2026-08-15",
+    expiryDate: "2026-09-15",
+    daysRemaining: 7,
+    messagesSent: 8420,
+    messageLimit: 15000,
+  };
+
+  if (typeof window === "undefined") return SSR_DEFAULT;
+
+  const { userPhone, userName } = resolveActiveIdentity();
+  const cleanPhone = digitsOnly(userPhone);
+
+  const clients = lsGet<SaaSClient[]>("orlife_clients_v2");
+  if (clients) {
+    const matched = clients.find((c) => {
+      const cp = digitsOnly(c.phone);
+      if (cleanPhone && cp && (cleanPhone.includes(cp) || cp.includes(cleanPhone))) return true;
+      if (c.businessName && userName && c.businessName.toLowerCase().includes(userName.toLowerCase())) return true;
+      return false;
+    });
+    if (matched) {
+      const { daysRemaining } = calculateClientStatus(matched.expiryDate);
+      return { ...matched, daysRemaining };
+    }
+  }
+
+  const defaultExpiry = "2026-09-15";
+  const { daysRemaining } = calculateClientStatus(defaultExpiry);
+  return {
+    businessName: userName || "Chamunda Industries",
+    planName: "Enterprise AI" as const,
+    startDate: "2026-08-15",
+    expiryDate: defaultExpiry,
+    daysRemaining,
+    messagesSent: 8420,
+    messageLimit: 15000,
+  };
 }
 
 

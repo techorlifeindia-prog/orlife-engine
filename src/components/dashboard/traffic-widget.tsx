@@ -2,32 +2,42 @@
 
 import { Activity, CheckCircle2, ShieldCheck, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
-import { getInitialSessionInfo } from "@/lib/user-session-utils";
+import { useSessionInfo } from "@/hooks/use-session-info";
+
 
 interface TrafficWidgetProps {
   engineOnline: boolean;
 }
 
 export function TrafficWidget({ engineOnline }: TrafficWidgetProps) {
-  const [mounted, setMounted] = useState(false);
-  const [session, setSession] = useState(() => getInitialSessionInfo());
+  const { session, mounted } = useSessionInfo();
   const isClientView = session.isClientView;
 
+  // Real stats from WhatsApp engine
+  const [realSent, setRealSent] = useState(0);
+  const [realFailed, setRealFailed] = useState(0);
+
   useEffect(() => {
-    setMounted(true);
-    setSession(getInitialSessionInfo());
-    const syncSession = () => {
-      setSession(getInitialSessionInfo());
+    if (!mounted) return;
+    const fetchStats = async () => {
+      try {
+        const res = await fetch("/api/evolution/stats");
+        if (res.ok) {
+          const data = await res.json();
+          setRealSent(data.totalSent ?? 0);
+          setRealFailed(data.totalFailed ?? 0);
+        }
+      } catch {}
     };
+    fetchStats();
+    const interval = setInterval(fetchStats, 30000);
+    return () => clearInterval(interval);
+  }, [mounted]);
 
-    window.addEventListener("storage", syncSession);
-    window.addEventListener("user_session_changed", syncSession);
-
-    return () => {
-      window.removeEventListener("storage", syncSession);
-      window.removeEventListener("user_session_changed", syncSession);
-    };
-  }, []);
+  const deliveredCount = Math.max(0, realSent - realFailed);
+  const totalAttempts = realSent + realFailed;
+  const deliveredPct = totalAttempts > 0 ? Math.round((deliveredCount / totalAttempts) * 1000) / 10 : 100;
+  const failedPct = totalAttempts > 0 ? Math.round((realFailed / totalAttempts) * 1000) / 10 : 0;
 
   if (!mounted) {
     return (
@@ -68,7 +78,7 @@ export function TrafficWidget({ engineOnline }: TrafficWidgetProps) {
                 <span className="font-semibold text-slate-900 dark:text-white text-xs">Delivered Messages</span>
               </div>
               <span className="text-emerald-600 dark:text-emerald-400 font-mono text-[10px] bg-emerald-500/10 px-1.5 py-0.2 rounded-md border border-emerald-500/30">
-                1,230 (98.4%)
+                {deliveredCount.toLocaleString()} ({deliveredPct}%)
               </span>
             </div>
 
@@ -78,7 +88,7 @@ export function TrafficWidget({ engineOnline }: TrafficWidgetProps) {
                 <span className="font-semibold text-slate-900 dark:text-white text-xs">Failed / Bounced</span>
               </div>
               <span className="text-amber-600 dark:text-amber-400 font-mono text-[10px] bg-amber-500/10 px-1.5 py-0.2 rounded-md border border-amber-500/30">
-                20 (1.6%)
+                {realFailed.toLocaleString()} ({failedPct}%)
               </span>
             </div>
           </>

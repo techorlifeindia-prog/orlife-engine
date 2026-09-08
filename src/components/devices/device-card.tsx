@@ -1,6 +1,7 @@
 "use client";
 
 import { Instance } from "@/lib/api-client";
+import { getClientCodeForDevice } from "@/lib/user-session-utils";
 import {
   BatteryMedium,
   MoreVertical,
@@ -12,6 +13,8 @@ import {
   Pencil,
   Check,
   X,
+  Settings2,
+  Building2,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -23,6 +26,7 @@ interface DeviceCardProps {
   onCloseMenu: () => void;
   onShowQR: (instanceName: string) => void;
   onOpenTest: (device: Instance) => void;
+  onConfigure?: (device: Instance) => void;
   onDisconnect: (instanceName: string) => void;
   onRefresh: () => void;
   onSaveLabel: (instanceName: string, label: string) => void;
@@ -36,6 +40,7 @@ export function DeviceCard({
   onCloseMenu,
   onShowQR,
   onOpenTest,
+  onConfigure,
   onDisconnect,
   onRefresh,
   onSaveLabel,
@@ -44,6 +49,8 @@ export function DeviceCard({
   const defaultDisplayName = device.profileName || device.owner || device.instanceName;
   const displayName = customLabel || defaultDisplayName;
   const formattedOwner = device.owner ? `+${device.owner.replace(/^\+/, "")}` : "Not linked";
+
+  const clientCode = getClientCodeForDevice(device);
 
   // Inline edit state
   const [isEditing, setIsEditing] = useState(false);
@@ -83,21 +90,28 @@ export function DeviceCard({
 
       <div className="flex justify-between items-start mb-4 pl-1">
         <div className="flex-1 min-w-0 pr-2">
-          {/* Status Badge */}
-          <div className="flex items-center gap-2 mb-2">
-            <span
-              className={`w-2.5 h-2.5 rounded-full ${
-                isConnected
-                  ? "bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.8)] animate-pulse"
-                  : "bg-amber-500"
-              }`}
-            ></span>
-            <span
-              className={`text-xs font-bold uppercase tracking-wider ${
-                isConnected ? "text-emerald-400" : "text-amber-400"
-              }`}
-            >
-              {isConnected ? "Connected" : "Disconnected"}
+          {/* Status & Client ID Badge Row */}
+          <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+            <div className="flex items-center gap-2">
+              <span
+                className={`w-2.5 h-2.5 rounded-full ${
+                  isConnected
+                    ? "bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.8)] animate-pulse"
+                    : "bg-amber-500"
+                }`}
+              ></span>
+              <span
+                className={`text-xs font-bold uppercase tracking-wider ${
+                  isConnected ? "text-emerald-400" : "text-amber-400"
+                }`}
+              >
+                {isConnected ? "Connected" : "Disconnected"}
+              </span>
+            </div>
+
+            <span className="text-[10px] font-mono font-extrabold px-2.5 py-0.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1.5 shadow-sm">
+              <Building2 className="w-3 h-3 text-emerald-400" />
+              Client ID: {clientCode}
             </span>
           </div>
 
@@ -163,6 +177,20 @@ export function DeviceCard({
           {/* Dropdown Menu Popup */}
           {isMenuOpen && (
             <div className="absolute right-0 top-12 z-50 w-56 rounded-2xl border border-slate-200 dark:border-emerald-500/30 bg-white dark:bg-[#0d1d26] shadow-2xl p-1.5 text-sm animate-in fade-in zoom-in-95 duration-150">
+
+              {/* ⚙️ Configure Device Mode & API */}
+              {onConfigure && (
+                <button
+                  onClick={() => {
+                    onCloseMenu();
+                    onConfigure(device);
+                  }}
+                  className="w-full flex items-center gap-3 px-3.5 py-2.5 text-left rounded-xl hover:bg-purple-500/10 text-purple-600 dark:text-purple-300 font-medium transition-colors"
+                >
+                  <Settings2 className="w-4 h-4 text-purple-500 shrink-0" />
+                  <span>Configure Device Settings</span>
+                </button>
+              )}
 
               {/* ✏️ Edit Name */}
               <button
@@ -237,15 +265,24 @@ export function DeviceCard({
             </button>
           ) : (
             <>
+              {onConfigure && (
+                <button
+                  onClick={() => onConfigure(device)}
+                  className="bg-purple-500/15 hover:bg-purple-500/25 text-purple-400 border border-purple-500/30 px-3 py-2 rounded-xl font-bold transition-all flex items-center gap-1.5 active:scale-95 text-xs"
+                  title="Configure Mode, Webhook & API Key"
+                >
+                  <Settings2 className="w-3.5 h-3.5 text-purple-400" /> Configure
+                </button>
+              )}
               <button
                 onClick={() => onOpenTest(device)}
-                className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 px-4 py-2 rounded-xl font-bold transition-all shadow-md shadow-emerald-500/20 flex items-center gap-1.5 active:scale-95 text-xs"
+                className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 px-3.5 py-2 rounded-xl font-bold transition-all shadow-md shadow-emerald-500/20 flex items-center gap-1.5 active:scale-95 text-xs"
               >
-                <FlaskConical className="w-4 h-4" /> Send Test
+                <FlaskConical className="w-4 h-4" /> Test
               </button>
               <button
                 onClick={() => onDisconnect(device.instanceName)}
-                className="bg-red-500/15 hover:bg-red-500/25 text-red-400 border border-red-500/30 px-3.5 py-2 rounded-xl font-semibold transition-all flex items-center gap-1.5 active:scale-95 text-xs"
+                className="bg-red-500/15 hover:bg-red-500/25 text-red-400 border border-red-500/30 px-3 py-2 rounded-xl font-semibold transition-all flex items-center gap-1.5 active:scale-95 text-xs"
               >
                 <Trash2 className="w-3.5 h-3.5" /> Disconnect
               </button>

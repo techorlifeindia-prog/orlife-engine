@@ -11,29 +11,32 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'Instance name required' }, { status: 400 });
   }
 
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 4000);
+
   try {
     const res = await fetch(`${EVOLUTION_API_URL}/instance/connect/${instanceName}`, {
-      headers: {
-        'apikey': EVOLUTION_GLOBAL_KEY,
-      },
+      headers: { apikey: EVOLUTION_GLOBAL_KEY },
+      signal: controller.signal,
     });
+    clearTimeout(timer);
 
     if (!res.ok) {
-      // Mock QR code response if Evolution API server is offline
-      return NextResponse.json({
-        code: 'mock-qr-code-data',
-        base64: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
-        pairingCode: '1234-5678',
-      });
+      return NextResponse.json(
+        { status: 'offline', error: 'WhatsApp Engine offline' },
+        { status: 503 }
+      );
     }
 
     const data = await res.json();
     return NextResponse.json(data);
-  } catch (error) {
-    return NextResponse.json({
-      code: 'mock-qr-code-data',
-      base64: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
-      pairingCode: '1234-5678',
-    });
+  } catch {
+    clearTimeout(timer);
+    return NextResponse.json(
+      { status: 'offline', error: 'WhatsApp Engine offline' },
+      { status: 503 }
+    );
   }
 }
+
+

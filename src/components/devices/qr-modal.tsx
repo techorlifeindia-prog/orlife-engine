@@ -44,20 +44,26 @@ export function QRModal({ isOpen, onClose, onSuccess, instanceName }: QRModalPro
         return;
       }
 
-      if (data?.base64 && data.base64.startsWith("data:image")) {
+      if (data?.base64 && data.base64.startsWith("data:image") && data.base64.length > 200) {
         setQrCode(data.base64);
         setIsDemoMode(false);
         setLoading(false);
-      } else if (data?.code === "real-whatsapp-qr") {
+      } else if (data?.code === "real-whatsapp-qr" && data?.base64) {
+        setQrCode(data.base64);
         setIsDemoMode(false);
-      } else {
+        setLoading(false);
+      } else if (data?.status === "offline" || !data) {
         setQrCode(null);
         setIsDemoMode(true);
         setLoading(false);
+      } else {
+        setIsDemoMode(false);
       }
 
-      if (data?.pairingCode) {
+      if (data?.pairingCode && data.pairingCode !== "1234-5678") {
         setPairingCode(data.pairingCode);
+      } else {
+        setPairingCode(null);
       }
     } catch (err) {
       if (isMountedRef.current) {

@@ -4,65 +4,76 @@ const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || 'http://localhost:808
 const EVOLUTION_GLOBAL_KEY = process.env.EVOLUTION_GLOBAL_KEY || '';
 
 export async function GET() {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 4000);
+
   try {
     const res = await fetch(`${EVOLUTION_API_URL}/instance/fetchInstances`, {
-      headers: {
-        'apikey': EVOLUTION_GLOBAL_KEY,
-      },
+      headers: { apikey: EVOLUTION_GLOBAL_KEY },
+      signal: controller.signal,
     });
+    clearTimeout(timer);
 
-    if (!res.ok) {
-      return NextResponse.json([]);
-    }
-
+    if (!res.ok) return NextResponse.json([]);
     const data = await res.json();
-    return NextResponse.json(data);
-  } catch (error) {
-    console.warn('Evolution API unreachable:', error);
+    return NextResponse.json(data || []);
+  } catch {
+    clearTimeout(timer);
     return NextResponse.json([]);
   }
 }
 
 export async function POST(req: Request) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 4000);
+
   try {
     const { instanceName } = await req.json();
     const res = await fetch(`${EVOLUTION_API_URL}/instance/create`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'apikey': EVOLUTION_GLOBAL_KEY,
+        apikey: EVOLUTION_GLOBAL_KEY,
       },
       body: JSON.stringify({
         instanceName,
         qrcode: true,
         integration: 'WHATSAPP-BAILEYS',
       }),
+      signal: controller.signal,
     });
+    clearTimeout(timer);
 
     if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      return NextResponse.json({ error: errData.message || 'Failed to create instance' }, { status: res.status });
+      return NextResponse.json({ error: 'WhatsApp Engine offline' }, { status: 503 });
     }
 
     const data = await res.json();
     return NextResponse.json(data);
-  } catch (error) {
-    return NextResponse.json({ error: 'Failed to connect to Evolution API' }, { status: 500 });
+  } catch {
+    clearTimeout(timer);
+    return NextResponse.json({ error: 'Failed to connect to WhatsApp Engine' }, { status: 500 });
   }
 }
 
 export async function DELETE(req: Request) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 4000);
+
   try {
     const { instanceName } = await req.json();
     const res = await fetch(`${EVOLUTION_API_URL}/instance/logout/${instanceName}`, {
       method: 'DELETE',
-      headers: {
-        'apikey': EVOLUTION_GLOBAL_KEY,
-      },
+      headers: { apikey: EVOLUTION_GLOBAL_KEY },
+      signal: controller.signal,
     });
+    clearTimeout(timer);
 
     return NextResponse.json({ success: res.ok });
-  } catch (error) {
+  } catch {
+    clearTimeout(timer);
     return NextResponse.json({ error: 'Failed to logout instance' }, { status: 500 });
   }
 }
+
+

@@ -12,9 +12,71 @@ const AI_ENGINE_NAME = 'OrLife Flash AI (Self-Hosted VPS Engine)';
 
 // Storage for rules & config (synced with frontend localStorage via file)
 const CONFIG_FILE = path.join(__dirname, 'ai-config.json');
+const CONFIG_TMP_FILE = path.join(__dirname, 'ai-config.json.tmp');
+const CONFIG_BACKUP_FILE = path.join(__dirname, 'ai-config.backup.json');
 
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
+
+// ─── 1. Simple In-Memory AI Processing Queue (Ollama Concurrency Control) ───
+const aiRequestQueue = [];
+let isProcessingAiQueue = false;
+
+function enqueueAiRequest(taskFn) {
+  return new Promise((resolve, reject) => {
+    aiRequestQueue.push({ taskFn, resolve, reject });
+    processNextInAiQueue();
+  });
+}
+
+async function processNextInAiQueue() {
+  if (isProcessingAiQueue || aiRequestQueue.length === 0) return;
+  isProcessingAiQueue = true;
+
+  const item = aiRequestQueue.shift();
+  try {
+    const result = await item.taskFn();
+    item.resolve(result);
+  } catch (err) {
+    item.reject(err);
+  } finally {
+    isProcessingAiQueue = false;
+    setTimeout(processNextInAiQueue, 200);
+  }
+}
+
+// ─── 2. Webhook Dispatch with Retry & Event ID ────────────────────────────────
+async function dispatchWebhookWithRetry(webhookUrl, payload, maxRetries = 3) {
+  const eventId = `evt_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+  const fullPayload = { eventId, ...payload };
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`[AI Hub Webhook] Attempt ${attempt}/${maxRetries} to ${webhookUrl} (Event ID: ${eventId})`);
+      const res = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(fullPayload),
+        signal: AbortSignal.timeout(6000),
+      });
+
+      if (res.ok) {
+        console.log(`[AI Hub Webhook] ✅ Success on Attempt ${attempt} for Event ${eventId}`);
+        return { success: true, eventId, attempt };
+      }
+      console.warn(`[AI Hub Webhook] Attempt ${attempt} returned status: ${res.status}`);
+    } catch (err) {
+      console.warn(`[AI Hub Webhook] Attempt ${attempt} failed: ${err.message}`);
+    }
+
+    if (attempt < maxRetries) {
+      await new Promise((r) => setTimeout(r, 1000 * attempt));
+    }
+  }
+
+  console.error(`[AI Hub Webhook] ❌ All ${maxRetries} attempts failed for Webhook: ${webhookUrl}`);
+  return { success: false, eventId, error: 'All retry attempts failed' };
+}
 
 // ─── Multi-Tenant Client Config Helpers ─────────────────────────────────────
 
@@ -29,8 +91,17 @@ function loadAllConfigs() {
   return {};
 }
 
+function generateApiKey() {
+  return 'orlife_sec_' + Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
+}
+
 function getDefaultConfig() {
   return {
+    tenantId: 'orlife',
+    mode: 'orlife_ai', // 'orlife_ai' | 'api_webhook' | 'api_with_ai' | 'broadcast_only'
+    webhookUrl: '',
+    apiKey: generateApiKey(),
+    rateLimitPerMin: 30,
     aiModel: 'OrLife Flash AI (Self-Hosted Ollama Engine)',
     systemPrompt: "You are Rani, a friendly human customer support executive from Chamunda Industries (Brand: OrLife), Hyderabad. Website: orlifeindia.com. WE SELL: Mobile batteries, chargers, cables, earphones, and mobile accessories.\n\nSTRICT RULES:\n1. ABSOLUTELY NO HALLUCINATION / NO GUESSING: Never invent specific model names, brand names, prices, or stock details. NEVER say we don't sell batteries.\n2. IF ANSWER NOT KNOWN OR ASKED FOR SPECIFIC MODEL/PRICE: Always reply professionally in Hinglish: 'Ji, iski jaankari main team se check karke aapko batati hoon. Aap detail share kar dijiye.'\n3. Keep replies 1 ultra-short natural sentence (max 12 words). Reply in casual human Hinglish/Hindi.",
     rules: [
@@ -41,8 +112,10 @@ function getDefaultConfig() {
     ],
     aiEnabled: true,
     ollamaEnabled: true,
-    minDelayMs: 2500,
-    maxDelayMs: 5500,
+    minDelaySec: 10,
+    maxDelaySec: 20,
+    minDelayMs: 10000,
+    maxDelayMs: 20000,
   };
 }
 
@@ -50,23 +123,45 @@ function loadConfig(instanceName = 'default') {
   const key = (instanceName || 'default').trim();
   const all = loadAllConfigs();
 
-  if (all.instances && all.instances[key]) {
-    return all.instances[key];
-  }
+  let config = null;
 
-  if (all.systemPrompt && !all.instances) {
-    return {
+  if (all.instances && all.instances[key]) {
+    config = { ...all.instances[key] };
+  } else if (all.instances && (all.instances['OrLife Local'] || all.instances['default'] || all.instances['OrLifeBot'])) {
+    const fallbackKey = all.instances['OrLife Local'] ? 'OrLife Local' : (all.instances['default'] ? 'default' : 'OrLifeBot');
+    config = { ...all.instances[fallbackKey] };
+  } else if (all.systemPrompt) {
+    config = {
+      tenantId: all.tenantId || 'orlife',
+      mode: all.mode || 'orlife_ai',
+      webhookUrl: all.webhookUrl || '',
+      apiKey: all.apiKey || generateApiKey(),
+      rateLimitPerMin: all.rateLimitPerMin || 30,
       aiModel: all.aiModel || 'OrLife Flash AI (Self-Hosted Ollama Engine)',
       systemPrompt: all.systemPrompt,
       rules: all.rules || [],
       aiEnabled: all.aiEnabled ?? true,
       ollamaEnabled: all.ollamaEnabled ?? true,
-      minDelayMs: all.minDelayMs || 2500,
-      maxDelayMs: all.maxDelayMs || 5500,
+      minDelaySec: all.minDelaySec || 10,
+      maxDelaySec: all.maxDelaySec || 20,
+      minDelayMs: all.minDelayMs || 10000,
+      maxDelayMs: all.maxDelayMs || 20000,
     };
+  } else {
+    config = { ...getDefaultConfig() };
   }
 
-  return all.instances?.['default'] || getDefaultConfig();
+  // Ensure default fields exist
+  if (!config.tenantId) config.tenantId = key === 'OrLifeBot' ? 'orlife' : `tenant_${key}`;
+  if (!config.mode) config.mode = 'orlife_ai';
+  if (config.webhookUrl === undefined) config.webhookUrl = '';
+  if (!config.apiKey) {
+    config.apiKey = generateApiKey();
+    saveConfig(key, config);
+  }
+  if (!config.rateLimitPerMin) config.rateLimitPerMin = 30;
+
+  return config;
 }
 
 function saveConfig(instanceName = 'default', newConfig = {}) {
@@ -74,18 +169,45 @@ function saveConfig(instanceName = 'default', newConfig = {}) {
   const all = loadAllConfigs();
   if (!all.instances) all.instances = {};
 
-  const existing = all.instances[key] || all.instances['default'] || getDefaultConfig();
-  all.instances[key] = { ...existing, ...newConfig };
+  const existing = all.instances[key] || getDefaultConfig();
+  const merged = { ...existing, ...newConfig };
 
-  if (key === 'default') {
-    all.systemPrompt = all.instances[key].systemPrompt;
-    all.rules = all.instances[key].rules;
-    all.aiEnabled = all.instances[key].aiEnabled;
-    all.aiModel = 'OrLife Flash AI (Self-Hosted Ollama Engine)';
+  if (!merged.tenantId) {
+    merged.tenantId = key === 'OrLifeBot' ? 'orlife' : `tenant_${key}`;
   }
 
-  fs.writeFileSync(CONFIG_FILE, JSON.stringify(all, null, 2), 'utf8');
-  console.log(`[AI Hub] Config saved for instance: "${key}"`);
+  if (!merged.apiKey) {
+    merged.apiKey = generateApiKey();
+  }
+
+  all.instances[key] = merged;
+
+  if (key === 'default' || key === 'OrLife Local' || key === 'OrLifeBot') {
+    all.systemPrompt = merged.systemPrompt;
+    all.rules = merged.rules;
+    all.aiEnabled = merged.aiEnabled;
+    all.aiModel = 'OrLife Flash AI (Self-Hosted Ollama Engine)';
+    all.mode = merged.mode;
+    all.webhookUrl = merged.webhookUrl;
+    all.apiKey = merged.apiKey;
+    all.tenantId = merged.tenantId;
+    all.rateLimitPerMin = merged.rateLimitPerMin || 30;
+    all.minDelaySec = merged.minDelaySec || 10;
+    all.maxDelaySec = merged.maxDelaySec || 20;
+  }
+
+  // Atomic Save: Write to tmp file first then atomic rename + backup copy
+  const jsonStr = JSON.stringify(all, null, 2);
+  try {
+    fs.writeFileSync(CONFIG_TMP_FILE, jsonStr, 'utf8');
+    fs.renameSync(CONFIG_TMP_FILE, CONFIG_FILE);
+    fs.writeFileSync(CONFIG_BACKUP_FILE, jsonStr, 'utf8');
+    console.log(`[AI Hub] Safe Atomic Config saved for instance "${key}": Tenant="${merged.tenantId}", Mode="${merged.mode}", RateLimit=${merged.rateLimitPerMin}/min`);
+  } catch (err) {
+    console.error(`[AI Hub] Atomic Save Error (using fallback):`, err.message);
+    fs.writeFileSync(CONFIG_FILE, jsonStr, 'utf8');
+  }
+
   return all.instances[key];
 }
 
@@ -161,7 +283,7 @@ app.get('/ollama/status', async (req, res) => {
       const models = data.models?.map((m) => typeof m === 'string' ? m : m.name) || [];
       return res.json({ status: 'ONLINE', models: models.length ? models : ['llama3.2'] });
     }
-  } catch (e) {}
+  } catch (e) { }
   // AI Hub Engine Fallback
   return res.json({
     status: 'ONLINE',
@@ -176,6 +298,11 @@ app.get('/config', (req, res) => {
   res.json(loadConfig(instanceName));
 });
 
+// 2b. Get All Configs
+app.get('/config/all', (req, res) => {
+  res.json(loadAllConfigs());
+});
+
 // 3. Save Config
 app.post('/config', (req, res) => {
   try {
@@ -187,6 +314,23 @@ app.post('/config', (req, res) => {
   }
 });
 
+// 3b. Regenerate API Key
+app.post('/config/regenerate-key', (req, res) => {
+  try {
+    const instanceName = req.body.instanceName || req.query.instanceName || req.query.instance || 'default';
+    const config = loadConfig(instanceName);
+    const newKey = generateApiKey();
+    config.apiKey = newKey;
+    saveConfig(instanceName, config);
+    res.json({ status: 'SUCCESS', instanceName, apiKey: newKey });
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to regenerate API Key: ' + e.message });
+  }
+});
+
+// Rate Limiter storage map per instanceName
+const rateTracker = new Map();
+
 // 4. Main WhatsApp Message Processing Route
 app.post('/ai-hub/process', async (req, res) => {
   const { instanceName, senderNumber, messageText } = req.body;
@@ -195,9 +339,58 @@ app.post('/ai-hub/process', async (req, res) => {
     return res.status(400).json({ error: 'Missing: instanceName, senderNumber, messageText' });
   }
 
-  console.log(`[AI Hub] 📨 Message from +${senderNumber} (Instance: "${instanceName}"): "${messageText}"`);
-
   const config = loadConfig(instanceName);
+  const mode = config.mode || 'orlife_ai';
+
+  // 🛑 RATE LIMITER ENFORCEMENT (Max Messages per Minute)
+  const maxRate = Number(config.rateLimitPerMin) || 30;
+  const now = Date.now();
+  const windowMs = 60 * 1000;
+
+  if (!rateTracker.has(instanceName)) {
+    rateTracker.set(instanceName, []);
+  }
+
+  const validTimestamps = rateTracker.get(instanceName).filter(t => now - t < windowMs);
+  rateTracker.set(instanceName, validTimestamps);
+
+  if (validTimestamps.length >= maxRate) {
+    console.warn(`[AI Hub] 🛑 Rate limit exceeded for "${instanceName}": ${validTimestamps.length}/${maxRate} msgs in last 60s. Skipping message from +${senderNumber}.`);
+    return res.status(429).json({
+      status: 'RATE_LIMITED',
+      reason: `Rate limit of ${maxRate} messages/minute exceeded for instance "${instanceName}".`
+    });
+  }
+
+  validTimestamps.push(now);
+
+  console.log(`[AI Hub] 📨 Message from +${senderNumber} (Instance: "${instanceName}", Tenant: "${config.tenantId}", Mode: "${mode}", Rate: ${validTimestamps.length}/${maxRate}): "${messageText}"`);
+
+  // Mode 4: Broadcast Only Mode -> Skip auto-reply & webhook
+  if (mode === 'broadcast_only') {
+    console.log(`[AI Hub] Instance "${instanceName}" is in "broadcast_only" mode. Skipping incoming message processing.`);
+    return res.json({ status: 'SKIPPED', reason: 'broadcast_only_mode' });
+  }
+
+  // Mode 2: Third-Party API Webhook Relay Mode -> Relay message to client's Webhook URL (with 3x retries & eventId)
+  if (mode === 'api_webhook') {
+    if (config.webhookUrl && config.webhookUrl.trim()) {
+      const webhookPayload = {
+        tenantId: config.tenantId || 'orlife',
+        instanceName,
+        from: senderNumber,
+        message: messageText,
+        timestamp: new Date().toISOString(),
+      };
+
+      // Asynchronous dispatch with 3 retries & timeout
+      dispatchWebhookWithRetry(config.webhookUrl.trim(), webhookPayload, 3);
+      return res.json({ status: 'WEBHOOK_RELAY_DISPATCHED', webhookUrl: config.webhookUrl });
+    } else {
+      console.log(`[AI Hub] Instance "${instanceName}" is in "api_webhook" mode but no Webhook URL is set. Skipping.`);
+      return res.json({ status: 'SKIPPED', reason: 'no_webhook_url_configured' });
+    }
+  }
 
   if (config.aiEnabled === false) {
     console.log(`[AI Hub] AI auto-responder is disabled for instance "${instanceName}". Skipping.`);
@@ -223,14 +416,18 @@ app.post('/ai-hub/process', async (req, res) => {
     }
   }
 
-  // Step 2: OrLife Flash AI Engine (Ollama Local)
+  // Step 2: OrLife Flash AI Engine (Ollama Local via Concurrency Queue)
   if (!replyText) {
-    console.log(`[AI Hub] 🤖 Calling OrLife Flash AI (${OLLAMA_MODEL})...`);
-    const aiResponse = await callOrLifeFlashAI(config.systemPrompt, messageText);
-    if (aiResponse) {
-      replyText = aiResponse;
-      replySource = `ORLIFE_FLASH_AI:${OLLAMA_MODEL}`;
-      console.log(`[AI Hub] ✅ OrLife Flash AI replied: "${replyText.substring(0, 80)}..."`);
+    console.log(`[AI Hub] 🤖 Enqueuing OrLife Flash AI request (${OLLAMA_MODEL}) for +${senderNumber}...`);
+    try {
+      const aiResponse = await enqueueAiRequest(() => callOrLifeFlashAI(config.systemPrompt, messageText));
+      if (aiResponse) {
+        replyText = aiResponse;
+        replySource = `ORLIFE_FLASH_AI:${OLLAMA_MODEL}`;
+        console.log(`[AI Hub] ✅ OrLife Flash AI replied: "${replyText.substring(0, 80)}..."`);
+      }
+    } catch (err) {
+      console.error(`[AI Hub] Ollama AI Queue error for +${senderNumber}:`, err.message);
     }
   }
 
@@ -251,10 +448,15 @@ app.post('/ai-hub/process', async (req, res) => {
     console.log('[AI Hub] ⚠️ Using static fallback reply');
   }
 
-  // Step 4: Anti-Ban Protection (Typing Status + Dynamic Delay)
-  const charBasedDelay = Math.floor(replyText.length * (60 + Math.random() * 30));
-  const minHumanDelay = Math.floor(3000 + Math.random() * 2500);
-  const humanDelay = Math.min(10000, Math.max(minHumanDelay, charBasedDelay));
+  // Step 4: Anti-Ban Protection (Typing Status + Custom Dynamic Delay)
+  const minSec = Number(config.minDelaySec) || 3;
+  const maxSec = Number(config.maxDelaySec) || Math.max(minSec + 2, 8);
+  const minMs = minSec * 1000;
+  const maxMs = maxSec * 1000;
+
+  const charBasedDelay = Math.floor(replyText.length * (50 + Math.random() * 30));
+  const baseDelay = Math.floor(minMs + Math.random() * Math.max(1000, maxMs - minMs));
+  const humanDelay = Math.max(baseDelay, Math.min(maxMs + 3000, charBasedDelay));
 
   try {
     await fetch(`${WHATSAPP_ENGINE_URL}/presence/send/${instanceName}`, {
@@ -263,7 +465,7 @@ app.post('/ai-hub/process', async (req, res) => {
       body: JSON.stringify({ number: senderNumber, presence: 'composing' }),
       signal: AbortSignal.timeout(3000),
     });
-  } catch (e) {}
+  } catch (e) { }
 
   console.log(`[AI Hub] ⏳ Anti-Ban Protection: Waiting ${(humanDelay / 1000).toFixed(1)}s before sending...`);
   await new Promise((resolve) => setTimeout(resolve, humanDelay));
@@ -272,7 +474,7 @@ app.post('/ai-hub/process', async (req, res) => {
   try {
     const sendRes = await fetch(`${WHATSAPP_ENGINE_URL}/message/sendText/${instanceName}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-source': 'ai_auto' },
       body: JSON.stringify({
         number: senderNumber,
         textMessage: { text: replyText }

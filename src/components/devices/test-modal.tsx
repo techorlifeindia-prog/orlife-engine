@@ -37,7 +37,7 @@ function formatWhatsAppNumber(raw: string): { clean: string; display: string; va
     clean: digits,
     display: `+${digits}`,
     valid: false,
-    warning: "⚠️ Country code chahiye — e.g. 919876543210 या 10 digit number",
+    warning: "⚠️ Country code required — e.g. 919876543210 or 10 digit number",
   };
 }
 

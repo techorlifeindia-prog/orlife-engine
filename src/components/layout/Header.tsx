@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useTheme } from "next-themes";
-import { Bell, Moon, Search, Sun, Menu, LogOut, Shield, RotateCcw, ArrowLeft, ShieldCheck, User, X, Save, Eye, EyeOff, CheckCircle2 } from "lucide-react";
+import { Bell, Moon, Sun, Menu, LogOut, Shield, RotateCcw, ArrowLeft, ShieldCheck, User, X, Save, Eye, EyeOff, CheckCircle2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getInitialSessionInfo, SessionUser } from "@/lib/user-session-utils";
 import { useUIStore } from "@/lib/ui-store";
@@ -127,17 +127,7 @@ export function Header({ title = "Dashboard Overview" }: { title?: string }) {
         <h2 className="text-base sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white shrink-0">{title}</h2>
       </div>
 
-      {/* Global Search Bar */}
-      <div className="flex-1 max-w-md mx-4 hidden md:block">
-        <div className="relative">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            placeholder="Search devices, alerts, campaigns..."
-            className="w-full bg-slate-100 dark:bg-[#081822] border border-slate-200 dark:border-[#163546] focus:border-[#10b981]/60 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-400 pl-10 pr-4 py-2 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-[#10b981]/50 transition-all"
-          />
-        </div>
-      </div>
+
 
       {/* Right User Actions */}
       <div className="flex items-center gap-2 sm:gap-3 shrink-0">

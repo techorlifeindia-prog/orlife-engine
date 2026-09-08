@@ -45,12 +45,13 @@ export function Sidebar() {
 
   const allNavItems = [
     { name: "Dashboard", href: "/", icon: LayoutDashboard, superAdminOnly: false },
-    { name: "SaaS Clients", href: "/clients", icon: Building2, superAdminOnly: true },
+    { name: "Clients Admin", href: "/clients", icon: Building2, superAdminOnly: true },
     { name: "Devices", href: "/devices", icon: MonitorSmartphone, superAdminOnly: false },
+    { name: "Users & Staff", href: "/users", icon: UserCheck, superAdminOnly: true },
     { name: "Send Message", href: "/campaigns", icon: Send, superAdminOnly: false },
     { name: "Templates", href: "/templates", icon: BookTemplate, superAdminOnly: false },
     { name: "Automation Rules", href: "/automation", icon: Bot, superAdminOnly: false },
-    { name: "Users & Staff", href: "/users", icon: UserCheck, superAdminOnly: true },
+    { name: "Pricing & Plans", href: "/pricing", icon: Zap, superAdminOnly: false },
   ];
 
   const visibleNavItems = allNavItems.filter((item) => !item.superAdminOnly || (mounted && isSuperAdmin));

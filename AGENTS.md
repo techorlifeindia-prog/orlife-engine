@@ -1,4 +1,4 @@
-﻿# AI Project Constitution Version 1.0
+# AI Project Constitution Version 1.0
 
 **Vision:** High-performance, secure, scalable, and modular AI Hub + WhatsApp + Website that is production-ready.
 
@@ -21,6 +21,12 @@
 - **Rule 17:** Performance Optimization – Implement pagination, caching, debouncing, and lazy loading where applicable.
 - **Rule 18:** Error Handling – User-friendly error messages on the frontend, detailed technical logs on the backend.
 - **Rule 19:** Final Checklist – Build passes, no type/runtime errors, documentation is updated, code is production-ready.
+- **Rule 20:** Zero Duplicate Code (DRY Enforcement) – Before writing any logic, check if a similar utility, hook, or helper already exists. Repeated patterns MUST be extracted:
+  - Repeated `localStorage` access → shared helper (e.g. `lsGet`, `lsSet`)
+  - Repeated `useState` + `useEffect` session sync → shared hook (e.g. `useSessionInfo`)
+  - Repeated string/number transforms → pure utility function (e.g. `digitsOnly`)
+  - Repeated business logic (e.g. admin detection) → single private function, never inline multiple times
+  - If the same block appears in 2+ places, it must be extracted BEFORE committing.
 
 **Golden Rule:** Correctness, Security, Performance, Stability, Clean Code – strictly in this exact priority order.
 

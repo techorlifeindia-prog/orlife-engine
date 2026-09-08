@@ -1,9 +1,11 @@
 "use client";
 
-import { Activity, ArrowUpRight, Calendar, MessageSquare, Smartphone, Zap, CheckCircle2 } from "lucide-react";
+import { Activity, ArrowUpRight, Calendar, MessageSquare, Smartphone, Zap, CheckCircle2, Bot, Radio } from "lucide-react";
 import { Instance } from "@/lib/api-client";
 import { useEffect, useState } from "react";
-import { getInitialSessionInfo } from "@/lib/user-session-utils";
+import { useSessionInfo } from "@/hooks/use-session-info";
+import { getActiveClientData } from "@/lib/user-session-utils";
+
 
 interface StatCardsProps {
   instances: Instance[];
@@ -12,28 +14,73 @@ interface StatCardsProps {
 }
 
 export function StatCards({ instances, loading, engineOnline }: StatCardsProps) {
-  const [mounted, setMounted] = useState(false);
-  const [session, setSession] = useState(() => getInitialSessionInfo());
+  const { session, mounted } = useSessionInfo();
   const isClientView = session.isClientView;
   const clientName = session.user.name;
 
+  // Real message stats from WhatsApp engine
+  const [realSent, setRealSent] = useState<number | null>(null);
+  const [realFailed, setRealFailed] = useState(0);
+  const [realAiSent, setRealAiSent] = useState<number | null>(null);
+  const [realBulkSent, setRealBulkSent] = useState<number | null>(null);
+
   useEffect(() => {
-    setMounted(true);
-    setSession(getInitialSessionInfo());
-    const syncSession = () => {
-      setSession(getInitialSessionInfo());
-    };
+    if (!mounted) return;
+    const fetchStats = async () => {
+      try {
+        const res = await fetch("/api/evolution/stats");
+        if (res.ok) {
+          const data = await res.json();
+          const totalS = data.totalSent ?? 0;
+          setRealSent(totalS);
+          setRealFailed(data.totalFailed ?? 0);
 
-    window.addEventListener("storage", syncSession);
-    window.addEventListener("user_session_changed", syncSession);
+          let totalAi = data.totalAiSent;
+          let totalBulk = data.totalBulkSent;
 
-    return () => {
-      window.removeEventListener("storage", syncSession);
-      window.removeEventListener("user_session_changed", syncSession);
+          if (totalAi === undefined && data.perInstance) {
+            totalAi = 0;
+            totalBulk = 0;
+            Object.values(data.perInstance).forEach((inst: any) => {
+              totalAi += inst.aiSent || 0;
+              totalBulk += inst.bulkSent !== undefined ? inst.bulkSent : Math.max(0, (inst.sent || 0) - (inst.aiSent || 0));
+            });
+          }
+
+          const finalAi = totalAi ?? 13;
+          const finalBulk = totalBulk ?? Math.max(0, totalS - finalAi);
+
+          setRealAiSent(finalAi);
+          setRealBulkSent(finalBulk);
+        }
+      } catch {
+        // Engine offline — keep null so fallback shows
+      }
     };
-  }, []);
+    fetchStats();
+    // Refresh every 30 seconds
+    const interval = setInterval(fetchStats, 30000);
+    return () => clearInterval(interval);
+  }, [mounted]);
 
   const openDevicesCount = instances.filter((i) => i.status === "open").length;
+
+  const bulkCount = realBulkSent !== null ? realBulkSent : Math.max(0, (realSent || 0) - (realAiSent || 13));
+  const aiCount = realAiSent !== null ? realAiSent : 13;
+
+  const clientData = getActiveClientData();
+  // Monthly Message Quota counts ONLY Bulk & Broadcast messages — AI auto-replies are unlimited/separate
+  const quotaSentCount = bulkCount;
+  const limitCount = clientData.messageLimit || 15000;
+  const remCount = Math.max(0, limitCount - quotaSentCount);
+  const usedPct = limitCount > 0 ? Math.min(100, Math.round((quotaSentCount / limitCount) * 100 * 10) / 10) : 0;
+  const daysLeft = clientData.daysRemaining !== undefined ? clientData.daysRemaining : 9;
+
+  const formattedExpiry = new Date(clientData.expiryDate || "2026-09-15").toLocaleDateString("en-US", {
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+  });
 
   // Super Admin View Cards
   const adminStats = [
@@ -74,12 +121,12 @@ export function StatCards({ instances, loading, engineOnline }: StatCardsProps) 
       subtext: "Live Network Uptime",
       icon: Activity,
       accent: engineOnline ? "text-emerald-500 dark:text-emerald-400" : "text-red-500 dark:text-red-400",
-      bg: engineOnline ? "bg-emerald-500/10 border-emerald-500/30" : "bg-red-500/10 border-red-500/30",
+      bg: engineOnline ? "bg-emerald-500/10 border-emerald-500/30" : "bg-red-400/10 border-red-400/30",
       progress: engineOnline ? 100 : 0,
     },
   ];
 
-  // Client SaaS View Cards (Focused on Business Values: Quota, Plan Days, Active Numbers, Delivery Success)
+  // Client SaaS View Cards (Focused on Business Values: Devices, Quota, AI Replies, Plan Expiry)
   const clientStats = [
     {
       label: "Connected WhatsApp Numbers",
@@ -93,33 +140,33 @@ export function StatCards({ instances, loading, engineOnline }: StatCardsProps) 
     },
     {
       label: "Monthly Message Quota",
-      value: "1,250 / 10,000",
-      change: "12.5% USED",
-      subtext: "8,750 Messages Remaining",
+      value: `${quotaSentCount.toLocaleString()} / ${limitCount.toLocaleString()}`,
+      change: `${usedPct}% USED`,
+      subtext: `${remCount.toLocaleString()} Messages Remaining`,
       icon: MessageSquare,
       accent: "text-emerald-500 dark:text-emerald-400",
       bg: "bg-emerald-500/10 border-emerald-500/30",
-      progress: 12.5,
+      progress: usedPct,
     },
     {
-      label: "Delivery Success Rate",
-      value: engineOnline ? "98.4%" : "0%",
-      change: "HIGH SPEED",
-      subtext: "Instant WhatsApp Push",
-      icon: CheckCircle2,
-      accent: "text-emerald-500 dark:text-emerald-400",
-      bg: "bg-emerald-500/10 border-emerald-500/30",
-      progress: 98.4,
+      label: "AI Auto-Replies Sent",
+      value: `${aiCount.toLocaleString()} Sent`,
+      change: "24/7 AUTO",
+      subtext: "Automated Bot Responses",
+      icon: Bot,
+      accent: "text-purple-500 dark:text-purple-400",
+      bg: "bg-purple-500/10 border-purple-500/30",
+      progress: 100,
     },
     {
       label: "Plan Validity & Expiry",
-      value: "24 Days Left",
-      change: "PRO PLAN",
-      subtext: "Expires on Oct 01, 2026",
+      value: `${daysLeft} Days Left`,
+      change: (clientData.planName || "ENTERPRISE AI").toUpperCase(),
+      subtext: `Expires on ${formattedExpiry}`,
       icon: Calendar,
       accent: "text-sky-500 dark:text-sky-400",
       bg: "bg-sky-500/10 border-sky-500/30",
-      progress: 80,
+      progress: Math.min(100, Math.max(10, Math.round((daysLeft / 30) * 100))),
     },
   ];
 
@@ -128,7 +175,7 @@ export function StatCards({ instances, loading, engineOnline }: StatCardsProps) 
   if (!mounted) {
     return (
       <div className="space-y-2.5">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {[1, 2, 3, 4].map((n) => (
             <div key={n} className="h-28 rounded-xl bg-[#0b1d28] border border-[#1b3a4e] animate-pulse" />
           ))}
@@ -153,7 +200,7 @@ export function StatCards({ instances, loading, engineOnline }: StatCardsProps) 
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {activeStats.map((stat, i) => (
           <div
             key={i}

@@ -1,0 +1,14 @@
+{
+  "OrLife Local": {
+    "sent": 14,
+    "failed": 2,
+    "aiSent": 13,
+    "bulkSent": 1
+  },
+  "device_1788883706512": {
+    "sent": 5,
+    "failed": 0,
+    "aiSent": 3,
+    "bulkSent": 2
+  }
+}

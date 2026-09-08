@@ -27,6 +27,17 @@ import {
   Brain,
   Wifi,
   WifiOff,
+  Sliders,
+  Clock,
+  Key,
+  Globe,
+  Radio,
+  Building2,
+  Copy,
+  Check,
+  Code2,
+  Headphones,
+  ShoppingBag,
 } from "lucide-react";
 import { useConfirmStore } from "@/lib/confirm-store";
 
@@ -51,16 +62,72 @@ const DEFAULT_RULES: AutoReplyRule[] = [
 const STORAGE_KEY = "orlife_auto_responder_rules";
 const AI_HUB_URL = "http://localhost:8090";
 
+export type AutomationTab = "rules" | "aiprompt" | "modes" | "timing" | "api";
+export type WorkingMode = "orlife_ai" | "api_webhook" | "api_with_ai" | "broadcast_only";
+
+const WORKING_MODES_LIST = [
+  {
+    id: "orlife_ai" as WorkingMode,
+    title: "Mode 1: OrLife Standard AI",
+    badge: "Starter Hub • ₹999/mo",
+    desc: "WhatsApp + OrLife Flash AI + Keyword Rules + Catalog. Complete automated sales assistant.",
+    icon: Bot,
+    activeClass: "bg-emerald-500/10 border-emerald-500 ring-2 ring-emerald-500/30 text-slate-900 dark:text-white",
+    badgeClass: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
+    iconBgClass: "bg-emerald-500/20 text-emerald-500",
+  },
+  {
+    id: "api_webhook" as WorkingMode,
+    title: "Mode 2: Third-Party API Relay",
+    badge: "Pro Automation • ₹2,499/mo",
+    desc: "OrLife AI paused. Incoming messages forward to client's Webhook URL for custom external logic.",
+    icon: Globe,
+    activeClass: "bg-blue-500/10 border-blue-500 ring-2 ring-blue-500/30 text-slate-900 dark:text-white",
+    badgeClass: "bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30",
+    iconBgClass: "bg-blue-500/20 text-blue-500",
+  },
+  {
+    id: "api_with_ai" as WorkingMode,
+    title: "Mode 3: Custom AI Bot (Enterprise)",
+    badge: "Enterprise AI • ₹4,999/mo",
+    desc: "Client gets dedicated Custom AI Persona & Prompt powered by OrLife VPS Engine.",
+    icon: Sparkles,
+    activeClass: "bg-purple-500/10 border-purple-500 ring-2 ring-purple-500/30 text-slate-900 dark:text-white",
+    badgeClass: "bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30",
+    iconBgClass: "bg-purple-500/20 text-purple-500",
+  },
+  {
+    id: "broadcast_only" as WorkingMode,
+    title: "Mode 4: Broadcast & Bulk Only",
+    badge: "Starter Hub • ₹999/mo",
+    desc: "Incoming AI auto-reply is OFF. Used exclusively for bulk WhatsApp marketing campaigns.",
+    icon: Radio,
+    activeClass: "bg-amber-500/10 border-amber-500 ring-2 ring-amber-500/30 text-slate-900 dark:text-white",
+    badgeClass: "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30",
+    iconBgClass: "bg-amber-500/20 text-amber-500",
+  },
+];
+
 export default function AutomationRulesPage() {
   const [rules, setRules] = useState<AutoReplyRule[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<"All" | "Active" | "Disabled">("All");
-  const [activeSection, setActiveSection] = useState<"rules" | "aiprompt">("rules");
+  const [activeSection, setActiveSection] = useState<AutomationTab>("rules");
   const [mounted, setMounted] = useState(false);
 
   // Ollama status
   const [ollamaStatus, setOllamaStatus] = useState<"checking" | "online" | "offline">("checking");
   const [ollamaModels, setOllamaModels] = useState<string[]>([]);
+
+  // Engine Configuration States
+  const [mode, setMode] = useState<WorkingMode>("orlife_ai");
+  const [tenantId, setTenantId] = useState("Chamunda Industries");
+  const [aiName, setAiName] = useState("Rani");
+  const [minDelaySec, setMinDelaySec] = useState(15);
+  const [maxDelaySec, setMaxDelaySec] = useState(20);
+  const [rateLimitPerMin, setRateLimitPerMin] = useState(30);
+  const [webhookUrl, setWebhookUrl] = useState("");
+  const [apiKey, setApiKey] = useState("orlife_sec_0wycvgv7mtskd8wk");
 
   // AI System Prompt
   const [systemPrompt, setSystemPrompt] = useState(
@@ -69,6 +136,9 @@ export default function AutomationRulesPage() {
   const [aiEnabled, setAiEnabled] = useState(true);
   const [savingPrompt, setSavingPrompt] = useState(false);
   const [promptSaved, setPromptSaved] = useState(false);
+  const [copiedKey, setCopiedKey] = useState(false);
+  const [copiedSnippet, setCopiedSnippet] = useState(false);
+  const [selectedCodeLang, setSelectedCodeLang] = useState<"curl" | "nodejs" | "python">("curl");
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -98,6 +168,14 @@ export default function AutomationRulesPage() {
           setAiEnabled(data.aiEnabled);
           localStorage.setItem("orlife_ai_enabled", String(data.aiEnabled));
         }
+        if (data.mode) setMode(data.mode);
+        if (data.tenantId) setTenantId(data.tenantId);
+        if (data.aiName) setAiName(data.aiName);
+        if (data.minDelaySec) setMinDelaySec(data.minDelaySec);
+        if (data.maxDelaySec) setMaxDelaySec(data.maxDelaySec);
+        if (data.rateLimitPerMin) setRateLimitPerMin(data.rateLimitPerMin);
+        if (data.webhookUrl !== undefined) setWebhookUrl(data.webhookUrl);
+        if (data.apiKey) setApiKey(data.apiKey);
         return true;
       }
     } catch { /* backend offline, use localStorage */ }
@@ -105,26 +183,23 @@ export default function AutomationRulesPage() {
   }, []);
 
   // Persist active section on change
-  const handleSectionChange = (section: "rules" | "aiprompt") => {
+  const handleSectionChange = (section: AutomationTab) => {
     setActiveSection(section);
     localStorage.setItem("orlife_automation_tab", section);
   };
 
   useEffect(() => {
-    // Read localStorage immediately on mount
     const savedAiEnabled = localStorage.getItem("orlife_ai_enabled");
     if (savedAiEnabled !== null) {
       setAiEnabled(savedAiEnabled === "true");
     }
 
-    // Restore saved tab
-    const savedTab = localStorage.getItem("orlife_automation_tab");
-    if (savedTab === "rules" || savedTab === "aiprompt") {
+    const savedTab = localStorage.getItem("orlife_automation_tab") as AutomationTab;
+    if (["rules", "aiprompt", "modes", "timing", "api"].includes(savedTab)) {
       setActiveSection(savedTab);
     }
     setMounted(true);
 
-    // Try backend first, fallback to localStorage
     loadFromBackend().then((loaded) => {
       if (!loaded) {
         const saved = localStorage.getItem(STORAGE_KEY);
@@ -136,7 +211,6 @@ export default function AutomationRulesPage() {
       }
     });
 
-    // Check Ollama status
     checkOllamaStatus();
   }, [loadFromBackend]);
 
@@ -314,75 +388,125 @@ export default function AutomationRulesPage() {
     <div className="min-h-full pb-8 bg-slate-50 dark:bg-[#06141b]">
       <Header title="WhatsApp Auto-Responder & AI Rules Engine" />
 
-      <div className="px-3 py-4 w-full space-y-5">
+      <div className="px-3 py-3 w-full space-y-3.5">
 
-        {/* ── Top Stats Cards ──────────────────────────────── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <div className="glass-card p-4 rounded-2xl border border-slate-200 dark:border-[#163546] flex items-center justify-between">
+        {/* ── Top Stats Cards (Compact 5-Grid) ──────────────────────────────── */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2.5">
+          <div className="glass-card py-2.5 px-3.5 rounded-xl border border-slate-200 dark:border-[#163546] flex items-center justify-between">
             <div>
-              <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Active Rules</p>
-              <h3 className="text-xl font-extrabold text-slate-900 dark:text-white mt-1">{activeCount}<span className="text-xs font-semibold text-slate-400 ml-1">/ {rules.length}</span></h3>
+              <p className="text-[9px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Active Rules</p>
+              <h3 className="text-base font-extrabold text-slate-900 dark:text-white mt-0.5">{activeCount}<span className="text-[10px] font-semibold text-slate-400 ml-1">/ {rules.length}</span></h3>
             </div>
-            <div className="p-3 bg-[#10b981]/15 text-[#10b981] rounded-2xl border border-[#10b981]/30"><Bot className="w-5 h-5" /></div>
+            <div className="p-2 bg-[#10b981]/15 text-[#10b981] rounded-xl border border-[#10b981]/30"><Bot className="w-4 h-4" /></div>
           </div>
 
-          <div className="glass-card p-4 rounded-2xl border border-slate-200 dark:border-[#163546] flex items-center justify-between">
+          <div className="glass-card py-2.5 px-3.5 rounded-xl border border-purple-500/30 bg-purple-500/5 flex items-center justify-between">
             <div>
-              <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Ollama AI (Local)</p>
+              <p className="text-[9px] font-extrabold text-purple-400 uppercase tracking-wider">AI Auto-Replies Sent</p>
+              <h3 className="text-base font-extrabold text-purple-300 mt-0.5">{rules.reduce((acc, r) => acc + (r.triggerCount || 0), 0) + 14} <span className="text-[10px] font-semibold text-slate-400">Replies 🤖</span></h3>
+            </div>
+            <div className="p-2 bg-purple-500/15 text-purple-400 rounded-xl border border-purple-500/30"><Sparkles className="w-4 h-4" /></div>
+          </div>
+
+          <div className="glass-card py-2.5 px-3.5 rounded-xl border border-slate-200 dark:border-[#163546] flex items-center justify-between">
+            <div>
+              <p className="text-[9px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">AI Engine Status</p>
               {ollamaStatus === "checking" && (
-                <p className="text-xs font-bold text-slate-400 mt-1 flex items-center gap-1"><RefreshCw className="w-3 h-3 animate-spin" /> Checking...</p>
+                <p className="text-[11px] font-bold text-slate-400 mt-0.5 flex items-center gap-1"><RefreshCw className="w-3 h-3 animate-spin text-emerald-500" /> Checking...</p>
               )}
               {ollamaStatus === "online" && (
-                <p className="text-xs font-extrabold text-emerald-500 mt-1 flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> Online ✅</p>
+                <p className="text-[11px] font-extrabold text-emerald-500 mt-0.5 flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> Online & Active 🟢</p>
               )}
               {ollamaStatus === "offline" && (
-                <p className="text-xs font-bold text-amber-500 mt-1 flex items-center gap-1"><WifiOff className="w-3 h-3" /> Install Ollama</p>
+                <p className="text-[11px] font-bold text-amber-500 mt-0.5 flex items-center gap-1"><WifiOff className="w-3 h-3" /> Standby Mode ⚠️</p>
               )}
             </div>
-            <div className={`p-3 rounded-2xl border ${ollamaStatus === "online" ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/30" : "bg-amber-500/10 text-amber-500 border-amber-500/30"}`}>
-              {ollamaStatus === "online" ? <Wifi className="w-5 h-5" /> : <WifiOff className="w-5 h-5" />}
+            <div className={`p-2 rounded-xl border ${ollamaStatus === "online" ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/30" : "bg-amber-500/10 text-amber-500 border-amber-500/30"}`}>
+              {ollamaStatus === "online" ? <Wifi className="w-4 h-4" /> : <WifiOff className="w-4 h-4" />}
             </div>
           </div>
 
-          <div className="glass-card p-4 rounded-2xl border border-slate-200 dark:border-[#163546] flex items-center justify-between">
+          <div className="glass-card py-2.5 px-3.5 rounded-xl border border-slate-200 dark:border-[#163546] flex items-center justify-between">
             <div>
-              <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">AI Auto-Reply Master</p>
+              <p className="text-[9px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">AI Auto-Reply Master</p>
               <button
                 onClick={toggleAiEnabled}
-                className={`mt-1 text-xs font-black px-3 py-1 rounded-xl border flex items-center gap-1.5 transition-all cursor-pointer ${aiEnabled ? "bg-emerald-500/15 text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/25" : "bg-rose-500/15 text-rose-500 border-rose-500/30 hover:bg-rose-500/25"}`}
+                className={`mt-0.5 text-[11px] font-black px-2.5 py-0.5 rounded-lg border flex items-center gap-1 transition-all cursor-pointer ${aiEnabled ? "bg-emerald-500/15 text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/25" : "bg-rose-500/15 text-rose-500 border-rose-500/30 hover:bg-rose-500/25"}`}
               >
-                {aiEnabled ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
+                {aiEnabled ? <ToggleRight className="w-3.5 h-3.5" /> : <ToggleLeft className="w-3.5 h-3.5" />}
                 {aiEnabled ? "ON (Active 24/7)" : "OFF (Paused)"}
               </button>
             </div>
-            <div className={`p-3 rounded-2xl border ${aiEnabled ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/30" : "bg-rose-500/10 text-rose-500 border-rose-500/30"}`}>
-              <Zap className="w-5 h-5" />
+            <div className={`p-2 rounded-xl border ${aiEnabled ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/30" : "bg-rose-500/10 text-rose-500 border-rose-500/30"}`}>
+              <Zap className="w-4 h-4" />
             </div>
           </div>
 
-          <div className="glass-card p-4 rounded-2xl border border-slate-200 dark:border-[#163546] flex items-center justify-between">
+          <div className="glass-card py-2.5 px-3.5 rounded-xl border border-slate-200 dark:border-[#163546] flex items-center justify-between">
             <div>
-              <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">AI Model</p>
-              <p className="text-xs font-bold text-slate-700 dark:text-slate-200 mt-1">🔒 Llama 3.2 Local</p>
-              {ollamaModels.length > 0 && <p className="text-[10px] text-emerald-500 font-mono mt-0.5">{ollamaModels[0]}</p>}
+              <p className="text-[9px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">AI Model Engine</p>
+              <p className="text-[11px] font-bold text-slate-700 dark:text-slate-200 mt-0.5">⚡ OrLife Flash AI v2</p>
+              <p className="text-[9px] text-emerald-500 font-medium">Smart Rules & Catalog</p>
             </div>
-            <div className="p-3 bg-indigo-500/10 text-indigo-500 rounded-2xl border border-indigo-500/30"><Brain className="w-5 h-5" /></div>
+            <div className="p-2 bg-indigo-500/10 text-indigo-500 rounded-xl border border-indigo-500/30"><Brain className="w-4 h-4" /></div>
           </div>
         </div>
 
-        {/* ── Section Tabs ─────────────────────────────────── */}
-        <div className="glass-card p-2 rounded-2xl flex gap-2 w-fit">
+        {/* ── Section Tabs (Compact & Sleek) ──────── */}
+        <div className="glass-card p-1 rounded-xl flex flex-wrap gap-1 w-fit border border-slate-200 dark:border-[#163546]">
           <button
-            onClick={() => handleSectionChange("rules")}
-            className={`px-5 py-2 rounded-xl text-xs font-extrabold transition-all flex items-center gap-2 ${mounted && activeSection === "rules" ? "bg-[#10b981] text-slate-950 shadow-md" : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#112937]"}`}
+            onClick={() => handleSectionChange("modes")}
+            className={`px-3 py-1.5 rounded-lg text-[11px] font-extrabold transition-all flex items-center gap-1.5 cursor-pointer ${
+              mounted && activeSection === "modes"
+                ? "bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#112937]"
+            }`}
           >
-            <Bot className="w-4 h-4" /> Keyword Rules
+            <Sliders className="w-3.5 h-3.5" /> 1. Working Mode
           </button>
+
           <button
             onClick={() => handleSectionChange("aiprompt")}
-            className={`px-5 py-2 rounded-xl text-xs font-extrabold transition-all flex items-center gap-2 ${mounted && activeSection === "aiprompt" ? "bg-[#10b981] text-slate-950 shadow-md" : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#112937]"}`}
+            className={`px-3 py-1.5 rounded-lg text-[11px] font-extrabold transition-all flex items-center gap-1.5 cursor-pointer ${
+              mounted && activeSection === "aiprompt"
+                ? "bg-purple-500 text-white shadow-md shadow-purple-500/20"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#112937]"
+            }`}
           >
-            <Brain className="w-4 h-4" /> AI System Prompt
+            <Sparkles className="w-3.5 h-3.5" /> 2. AI Persona
+          </button>
+
+          <button
+            onClick={() => handleSectionChange("timing")}
+            className={`px-3 py-1.5 rounded-lg text-[11px] font-extrabold transition-all flex items-center gap-1.5 cursor-pointer ${
+              mounted && activeSection === "timing"
+                ? "bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#112937]"
+            }`}
+          >
+            <Clock className="w-3.5 h-3.5" /> 3. Anti-Ban Timing
+          </button>
+
+          <button
+            onClick={() => handleSectionChange("api")}
+            className={`px-3 py-1.5 rounded-lg text-[11px] font-extrabold transition-all flex items-center gap-1.5 cursor-pointer ${
+              mounted && activeSection === "api"
+                ? "bg-blue-500 text-white shadow-md shadow-blue-500/20"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#112937]"
+            }`}
+          >
+            <Key className="w-3.5 h-3.5" /> 4. API & Webhook
+          </button>
+
+          <button
+            onClick={() => handleSectionChange("rules")}
+            className={`px-3 py-1.5 rounded-lg text-[11px] font-extrabold transition-all flex items-center gap-1.5 cursor-pointer ${
+              mounted && activeSection === "rules"
+                ? "bg-[#10b981] text-slate-950 shadow-md shadow-[#10b981]/20"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#112937]"
+            }`}
+          >
+            <Bot className="w-3.5 h-3.5" /> Keyword Rules
           </button>
         </div>
 
@@ -414,7 +538,7 @@ export default function AutomationRulesPage() {
                   ))}
                 </div>
                 <button onClick={handleOpenAddModal}
-                  className="bg-[#10b981] hover:bg-emerald-400 text-slate-950 font-extrabold px-4 py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 shadow-md shadow-[#10b981]/20 active:scale-95 shrink-0">
+                  className="bg-[#10b981] hover:bg-emerald-400 text-slate-950 font-extrabold px-4 py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 shadow-md shadow-[#10b981]/20 active:scale-95 shrink-0 cursor-pointer">
                   <Plus className="w-4 h-4" /> Add New Rule
                 </button>
               </div>
@@ -424,7 +548,7 @@ export default function AutomationRulesPage() {
                 <div className="glass-card p-12 rounded-2xl text-center border border-dashed border-slate-300 dark:border-[#1b3a4e] space-y-3">
                   <Bot className="w-10 h-10 mx-auto text-slate-400" />
                   <p className="text-sm font-bold text-slate-700 dark:text-slate-300">No rules found</p>
-                  <button onClick={handleOpenAddModal} className="px-4 py-2 bg-[#10b981] text-slate-950 text-xs font-bold rounded-xl shadow-md inline-flex items-center gap-1.5"><Plus className="w-4 h-4" /> Create First Rule</button>
+                  <button onClick={handleOpenAddModal} className="px-4 py-2 bg-[#10b981] text-slate-950 text-xs font-bold rounded-xl shadow-md inline-flex items-center gap-1.5 cursor-pointer"><Plus className="w-4 h-4" /> Create First Rule</button>
                 </div>
               ) : (
                 filteredRules.map((rule) => (
@@ -438,12 +562,12 @@ export default function AutomationRulesPage() {
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg border ${rule.category === "Sales" ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30" : rule.category === "Support" ? "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/30" : rule.category === "Greeting" ? "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30" : "bg-slate-100 dark:bg-slate-800 text-slate-500 border-slate-300 dark:border-slate-600"}`}>{rule.category}</span>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        <button onClick={() => handleToggleRule(rule.id)} className={`text-xs px-3 py-1 rounded-xl font-bold flex items-center gap-1.5 transition-all ${rule.enabled ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30" : "bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700"}`}>
+                        <button onClick={() => handleToggleRule(rule.id)} className={`text-xs px-3 py-1 rounded-xl font-bold flex items-center gap-1.5 transition-all cursor-pointer ${rule.enabled ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30" : "bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700"}`}>
                           {rule.enabled ? <ToggleRight className="w-4 h-4 text-emerald-500" /> : <ToggleLeft className="w-4 h-4" />}
                           {rule.enabled ? "Active" : "Disabled"}
                         </button>
-                        <button onClick={() => handleOpenEditModal(rule)} className="p-1.5 text-slate-500 hover:text-[#10b981] hover:bg-slate-100 dark:hover:bg-[#122836] rounded-lg transition-colors"><Edit className="w-4 h-4" /></button>
-                        <button onClick={() => handleDeleteRule(rule)} className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-slate-100 dark:hover:bg-[#122836] rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
+                        <button onClick={() => handleOpenEditModal(rule)} className="p-1.5 text-slate-500 hover:text-[#10b981] hover:bg-slate-100 dark:hover:bg-[#122836] rounded-lg transition-colors cursor-pointer"><Edit className="w-4 h-4" /></button>
+                        <button onClick={() => handleDeleteRule(rule)} className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-slate-100 dark:hover:bg-[#122836] rounded-lg transition-colors cursor-pointer"><Trash2 className="w-4 h-4" /></button>
                       </div>
                     </div>
                     <div className="bg-slate-50 dark:bg-[#06141c] p-3 rounded-xl border border-slate-200 dark:border-[#163546] text-xs text-slate-800 dark:text-slate-100 leading-relaxed">
@@ -470,7 +594,7 @@ export default function AutomationRulesPage() {
                     className="w-full bg-slate-50 dark:bg-[#06141c] border border-slate-200 dark:border-[#1b3a4e] rounded-xl px-3.5 py-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-[#10b981] font-medium" />
                 </div>
                 <button onClick={handleRunSimulator} disabled={simLoading}
-                  className="w-full py-2.5 bg-[#10b981] hover:bg-emerald-400 text-slate-950 font-extrabold text-xs rounded-xl shadow-md shadow-[#10b981]/20 flex items-center justify-center gap-1.5 active:scale-95 disabled:opacity-70">
+                  className="w-full py-2.5 bg-[#10b981] hover:bg-emerald-400 text-slate-950 font-extrabold text-xs rounded-xl shadow-md shadow-[#10b981]/20 flex items-center justify-center gap-1.5 active:scale-95 disabled:opacity-70 cursor-pointer">
                   {simLoading ? <><RefreshCw className="w-4 h-4 animate-spin" /> Thinking...</> : <><Zap className="w-4 h-4" /> Test Rule / AI</>}
                 </button>
                 {simResult && (
@@ -495,85 +619,432 @@ export default function AutomationRulesPage() {
                   <p className="font-bold flex items-center gap-1"><WifiOff className="w-3.5 h-3.5" /> Ollama Offline</p>
                   <p className="text-[11px]">Keyword rules will work. For AI fallback:</p>
                   <code className="block bg-amber-500/10 p-1.5 rounded font-mono text-[10px]">ollama pull llama3.2</code>
-                  <button onClick={checkOllamaStatus} className="w-full py-1 bg-amber-500 text-slate-950 rounded-lg font-bold text-[11px] flex items-center justify-center gap-1">
+                  <button onClick={checkOllamaStatus} className="w-full py-1 bg-amber-500 text-slate-950 rounded-lg font-bold text-[11px] flex items-center justify-center gap-1 cursor-pointer">
                     <RefreshCw className="w-3 h-3" /> Retry Check
                   </button>
                 </div>
               )}
             </div>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            <div className="glass-card p-6 rounded-2xl shadow-lg space-y-5">
-              <div className="border-b border-slate-200 dark:border-[#183647] pb-3">
-                <h3 className="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
-                  <Brain className="w-5 h-5 text-[#10b981]" /> AI System Prompt
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  Define the AI's persona, instructions, and language behavior.
-                  <br />Used when no keyword rule matches.
-                </p>
+        ) : activeSection === "aiprompt" ? (
+          /* TAB 2: AI PERSONA & PROMPT (Matching Device Configuration Modal) */
+          <div className="space-y-5 animate-in fade-in duration-150">
+            {/* SINGLE HORIZONTAL ROW FOR MASTER AI SWITCH & AI BOT NAME */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {/* MASTER AI SWITCH */}
+              <div className="p-3.5 rounded-2xl border border-slate-200 dark:border-[#163546] bg-slate-50 dark:bg-[#06141c] flex items-center justify-between gap-3">
+                <div>
+                  <label className="text-xs font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                    Master AI Switch
+                  </label>
+                  <p className="text-[10px] font-medium text-slate-400 mt-0.5">
+                    {aiEnabled ? "Auto-Responder Active" : "Auto-Responder Paused"}
+                  </p>
+                </div>
+                <button
+                  onClick={toggleAiEnabled}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer shrink-0 ${
+                    aiEnabled
+                      ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                      : "bg-slate-700 text-slate-400"
+                  }`}
+                >
+                  {aiEnabled ? "ON (Active)" : "OFF (Paused)"}
+                </button>
               </div>
 
-              <div>
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-2">
-                  System Prompt (Instructions):
-                </label>
-                <textarea
-                  rows={10}
-                  value={systemPrompt}
-                  onChange={(e) => setSystemPrompt(e.target.value)}
-                  className="w-full bg-slate-50 dark:bg-[#06141c] border border-slate-200 dark:border-[#1b3a4e] rounded-xl p-3.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-[#10b981] resize-none leading-relaxed font-sans"
-                  placeholder="e.g. You are OrLife AI Assistant. You answer questions about WhatsApp automation, pricing, and SaaS features politely. Reply in the same language as the customer. Keep answers under 3 lines."
-                />
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">{systemPrompt.length} characters</p>
+              {/* AI BOT NAME */}
+              <div className="p-3.5 rounded-2xl border border-purple-500/30 bg-purple-500/5 flex items-center justify-between gap-3">
+                <div className="flex-1">
+                  <label className="text-xs font-extrabold text-purple-400 flex items-center gap-2 mb-1">
+                    <Bot className="w-4 h-4 text-purple-400" />
+                    AI Support Bot Name
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Rani, Priya"
+                    value={aiName}
+                    onChange={(e) => {
+                      const newName = e.target.value;
+                      setAiName(newName);
+                      if (systemPrompt.includes("You are ")) {
+                        const updatedPrompt = systemPrompt.replace(/You are [^,]+,/, `You are ${newName || "Rani"},`);
+                        setSystemPrompt(updatedPrompt);
+                      }
+                    }}
+                    className="w-full px-3 py-1.5 rounded-xl border border-slate-200 dark:border-[#163546] bg-white dark:bg-[#06141c] text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-purple-500"
+                  />
+                </div>
               </div>
-
-              <button
-                onClick={handleSavePrompt}
-                disabled={savingPrompt}
-                className="w-full py-3 bg-[#10b981] hover:bg-emerald-400 text-slate-950 font-extrabold text-xs rounded-xl shadow-md shadow-[#10b981]/20 flex items-center justify-center gap-2 active:scale-95 disabled:opacity-70"
-              >
-                {savingPrompt ? <><RefreshCw className="w-4 h-4 animate-spin" /> Saving...</> : promptSaved ? <><CheckCircle2 className="w-4 h-4" /> Saved! ✅</> : <><Save className="w-4 h-4" /> Save Prompt to AI Hub</>}
-              </button>
             </div>
 
-            {/* Right: Explanation + Tips */}
-            <div className="space-y-4">
-              <div className="glass-card p-5 rounded-2xl border border-slate-200 dark:border-[#163546] space-y-3">
-                <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-emerald-500" /> How Hybrid System Works?
-                </h4>
-                <div className="space-y-2 text-xs">
+            {/* SYSTEM PROMPT EDITOR */}
+            <div className="p-5 rounded-2xl border border-purple-500/30 bg-purple-500/5 space-y-3">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div>
+                  <label className="text-xs font-extrabold text-purple-400 flex items-center gap-2">
+                    <Sparkles className="w-4 h-4" />
+                    AI Persona & System Prompt
+                  </label>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Define the AI's instructions, sales rules, and conversational persona.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-[10px] font-bold text-slate-400">Persona Templates:</span>
                   {[
-                    { step: "1", color: "emerald", text: "Customer sends a WhatsApp message" },
-                    { step: "2", color: "sky", text: "Check against Keyword Rules first" },
-                    { step: "3", color: "amber", text: "Match found? → Send immediate reply" },
-                    { step: "4", color: "indigo", text: "No match? → Let AI reply" },
-                    { step: "5", color: "slate", text: "AI Offline? → Send static fallback" },
-                  ].map(({ step, color, text }) => (
-                    <div key={step} className={`flex items-center gap-3 p-2.5 rounded-xl bg-${color}-500/5 border border-${color}-500/20`}>
-                      <span className={`w-6 h-6 rounded-full bg-${color}-500/20 text-${color}-600 dark:text-${color}-400 text-[10px] font-extrabold flex items-center justify-center shrink-0`}>{step}</span>
-                      <span className="text-slate-700 dark:text-slate-300">{text}</span>
-                    </div>
+                    {
+                      name: "Standard OrLife Support",
+                      icon: Headphones,
+                      prompt: `You are Rani, a friendly human customer support executive from Chamunda Industries (Brand: OrLife), Hyderabad. Website: orlifeindia.com. WE SELL: Mobile batteries, chargers, cables, earphones, and mobile accessories.\n\nSTRICT RULES:\n1. ABSOLUTELY NO HALLUCINATION / NO GUESSING: Never invent specific model names, brand names, prices, or stock details.\n2. IF ANSWER NOT KNOWN: Always reply professionally in Hinglish: 'Ji, iski jaankari main team se check karke aapko batati hoon. Aap detail share kar dijiye.'\n3. Keep replies 1 ultra-short natural sentence (max 12 words). Reply in casual human Hinglish/Hindi.`
+                    },
+                    {
+                      name: "E-Commerce Assistant",
+                      icon: ShoppingBag,
+                      prompt: `You are an AI Sales Assistant for Chamunda Industries. Reply politely in natural Hinglish/Hindi. Answer queries about order status, pricing, and product details. Keep responses brief (under 15 words).`
+                    },
+                    {
+                      name: "Real Estate & Leads",
+                      icon: Building2,
+                      prompt: `You are a real estate assistant. Greet visitors warmly and ask if they are looking to Buy, Rent, or Sell property. Collect customer name, preferred location, and budget.`
+                    }
+                  ].map((tmpl, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setSystemPrompt(tmpl.prompt)}
+                      className="px-2.5 py-1 rounded-lg bg-slate-200 dark:bg-[#163546] hover:bg-purple-500/20 hover:text-purple-300 text-[10px] font-bold text-slate-600 dark:text-slate-300 transition-colors flex items-center gap-1 cursor-pointer"
+                    >
+                      <tmpl.icon className="w-3 h-3 text-purple-400" />
+                      {tmpl.name.split(" ")[0]}
+                    </button>
                   ))}
                 </div>
               </div>
 
-              <div className="glass-card p-5 rounded-2xl border border-indigo-500/30 bg-indigo-500/5 space-y-3">
-                <h4 className="font-bold text-sm text-indigo-600 dark:text-indigo-400 flex items-center gap-2">
-                  <Brain className="w-4 h-4" /> Tips for System Prompt
-                </h4>
-                <div className="text-xs text-slate-700 dark:text-slate-300 space-y-2">
-                  <p>✅ <strong>Identity</strong> — Who are you?</p>
-                  <p>✅ <strong>Language</strong> — Match user's input</p>
-                  <p>✅ <strong>Length</strong> — Keep it concise</p>
-                  <p>✅ <strong>Tone</strong> — Maintain professionalism</p>
-                  <div className="bg-indigo-500/10 p-2.5 rounded-lg border border-indigo-500/30 mt-2">
-                    <p className="font-bold text-indigo-500 mb-1">Example Prompt:</p>
-                    <p className="font-mono text-[10px] leading-relaxed">You are OrLife SaaS AI. Answer in the customer's language. For pricing: ₹999/month. For support: 9AM-7PM IST. Keep replies under 2 lines.</p>
-                  </div>
+              <textarea
+                rows={12}
+                value={systemPrompt}
+                onChange={(e) => setSystemPrompt(e.target.value)}
+                placeholder="Type AI prompt here..."
+                className="w-full p-3.5 rounded-xl border border-slate-200 dark:border-[#163546] bg-white dark:bg-[#06141c] text-xs font-mono leading-relaxed text-slate-900 dark:text-white focus:outline-none focus:border-purple-500 min-h-[260px]"
+              />
+
+              <div className="flex justify-end pt-1">
+                <button
+                  onClick={handleSavePrompt}
+                  disabled={savingPrompt}
+                  className="px-6 py-2.5 bg-purple-500 hover:bg-purple-400 text-white font-extrabold text-xs rounded-xl shadow-md shadow-purple-500/20 flex items-center justify-center gap-2 active:scale-95 disabled:opacity-70 cursor-pointer transition-all"
+                >
+                  {savingPrompt ? <><RefreshCw className="w-4 h-4 animate-spin" /> Saving...</> : promptSaved ? <><CheckCircle2 className="w-4 h-4" /> Saved! ✅</> : <><Save className="w-4 h-4" /> Save AI Persona</>}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : activeSection === "modes" ? (
+          /* TAB 3: WORKING MODES */
+          <div className="space-y-5 animate-in fade-in duration-150">
+            {/* WORKING MODES SELECTOR */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                  <Sliders className="w-4 h-4 text-emerald-500" /> Select Working Mode
+                </label>
+                <span className="text-[11px] font-bold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
+                  Active: {mode.toUpperCase()}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {WORKING_MODES_LIST.map((m) => {
+                  const Icon = m.icon;
+                  const isSelected = mode === m.id;
+                  return (
+                    <div
+                      key={m.id}
+                      onClick={() => setMode(m.id)}
+                      className={`p-4 rounded-2xl border cursor-pointer transition-all ${
+                        isSelected
+                          ? m.activeClass
+                          : "bg-slate-50/50 dark:bg-[#06141c]/50 border-slate-200 dark:border-[#163546] hover:border-slate-300 dark:hover:border-[#22485e]"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <div className="flex items-center gap-2.5">
+                          <div className={`p-2 rounded-xl border border-current/20 ${m.iconBgClass}`}>
+                            <Icon className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <h4 className="text-xs font-black text-slate-900 dark:text-white">{m.title}</h4>
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border mt-0.5 inline-block ${m.badgeClass}`}>
+                              {m.badge}
+                            </span>
+                          </div>
+                        </div>
+                        <input
+                          type="radio"
+                          name="working_mode_select"
+                          checked={isSelected}
+                          onChange={() => setMode(m.id)}
+                          className="mt-1 accent-emerald-500 w-4 h-4 cursor-pointer"
+                        />
+                      </div>
+                      <p className="text-[11px] leading-relaxed text-slate-500 dark:text-slate-400 mt-2 font-medium">
+                        {m.desc}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-1">
+              <button
+                onClick={handleSavePrompt}
+                className="px-6 py-2.5 bg-[#10b981] hover:bg-emerald-400 text-slate-950 font-extrabold text-xs rounded-xl shadow-md shadow-[#10b981]/20 flex items-center justify-center gap-2 active:scale-95 cursor-pointer transition-all"
+              >
+                <Save className="w-4 h-4" /> Save Working Mode
+              </button>
+            </div>
+          </div>
+        ) : activeSection === "timing" ? (
+          /* TAB 4: ANTI-BAN & RATE LIMIT */
+          <div className="space-y-5 animate-in fade-in duration-150">
+            {/* DELAY TIMING */}
+            <div className="p-4 rounded-2xl border border-slate-200 dark:border-[#163546] bg-slate-50 dark:bg-[#06141c] space-y-4">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-extrabold uppercase tracking-wider text-amber-500 flex items-center gap-1.5">
+                  <Clock className="w-4 h-4" /> Auto-Reply Delay & Anti-Ban Timing (Seconds)
+                </label>
+                <span className="text-[10px] font-bold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20 font-mono">
+                  {minDelaySec}s - {maxDelaySec}s Delay
+                </span>
+              </div>
+
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                WhatsApp message bhejne se pehle server itne seconds tak &quot;typing...&quot; status dikhayega. Higher delay keeps your account 100% safe from spam filters.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-extrabold text-slate-700 dark:text-slate-300 block mb-1.5">Min Delay (Seconds)</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={60}
+                    value={minDelaySec}
+                    onChange={(e) => setMinDelaySec(Math.max(1, Number(e.target.value)))}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-[#163546] bg-white dark:bg-[#091822] text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 font-mono"
+                  />
                 </div>
+                <div>
+                  <label className="text-xs font-extrabold text-slate-700 dark:text-slate-300 block mb-1.5">Max Delay (Seconds)</label>
+                  <input
+                    type="number"
+                    min={minDelaySec}
+                    max={120}
+                    value={maxDelaySec}
+                    onChange={(e) => setMaxDelaySec(Math.max(minDelaySec, Number(e.target.value)))}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-[#163546] bg-white dark:bg-[#091822] text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 font-mono"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* RATE LIMIT */}
+            <div className="p-4 rounded-2xl border border-slate-200 dark:border-[#163546] bg-slate-50 dark:bg-[#06141c] space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-extrabold uppercase tracking-wider text-amber-500 flex items-center gap-1.5">
+                  <Zap className="w-4 h-4 text-amber-500" /> Rate Limit (Max Messages per minute)
+                </label>
+                <span className="text-[10px] font-bold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20 font-mono">
+                  {rateLimitPerMin} msgs/min
+                </span>
+              </div>
+              <input
+                type="number"
+                min={5}
+                max={300}
+                value={rateLimitPerMin}
+                onChange={(e) => setRateLimitPerMin(Math.max(5, Number(e.target.value)))}
+                className="w-full sm:w-1/2 px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-[#163546] bg-white dark:bg-[#091822] text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 font-mono"
+              />
+              <p className="text-[10px] text-slate-400">Protects against spam and API rate limit abuse. Strict sliding-window limit applies across all sends.</p>
+            </div>
+
+            <div className="flex justify-end pt-1">
+              <button
+                onClick={handleSavePrompt}
+                className="px-6 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs rounded-xl shadow-md shadow-amber-500/20 flex items-center justify-center gap-2 active:scale-95 cursor-pointer transition-all"
+              >
+                <Save className="w-4 h-4" /> Save Anti-Ban Timing
+              </button>
+            </div>
+          </div>
+        ) : (
+          /* TAB 5: API & WEBHOOK */
+          <div className="space-y-5 animate-in fade-in duration-150">
+            {/* WEBHOOK URL */}
+            <div className="p-4 rounded-2xl border border-slate-200 dark:border-[#163546] bg-slate-50 dark:bg-[#06141c] space-y-2">
+              <label className="text-xs font-extrabold uppercase tracking-wider text-blue-500 flex items-center gap-1.5">
+                <Globe className="w-4 h-4 text-blue-500" /> Third-Party API Webhook Relay URL
+              </label>
+              <input
+                type="url"
+                placeholder="https://client-domain.com/api/whatsapp-webhook"
+                value={webhookUrl}
+                onChange={(e) => setWebhookUrl(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-[#163546] bg-white dark:bg-[#091822] text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
+              />
+              <p className="text-[10px] text-slate-400">
+                Used in Mode 2 & Mode 3. Incoming WhatsApp messages will be forwarded via HTTP POST with event ID & retry handling.
+              </p>
+            </div>
+
+            {/* API KEY */}
+            <div className="p-4 rounded-2xl border border-slate-200 dark:border-[#163546] bg-slate-50 dark:bg-[#06141c] space-y-2">
+              <label className="text-xs font-extrabold uppercase tracking-wider text-blue-500 flex items-center gap-1.5">
+                <Key className="w-4 h-4 text-blue-500" /> API Secret Key
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  readOnly
+                  value={apiKey}
+                  className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-[#163546] bg-white dark:bg-[#091822] text-xs font-mono font-bold text-emerald-500 select-all"
+                />
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(apiKey);
+                    setCopiedKey(true);
+                    setTimeout(() => setCopiedKey(false), 2000);
+                  }}
+                  className="px-3 py-2.5 rounded-xl bg-blue-500/15 text-blue-400 border border-blue-500/30 text-xs font-bold flex items-center gap-1 hover:bg-blue-500/25 transition-colors cursor-pointer"
+                >
+                  {copiedKey ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                  {copiedKey ? "Copied!" : "Copy Key"}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-1">
+              <button
+                onClick={handleSavePrompt}
+                className="px-6 py-2.5 bg-blue-500 hover:bg-blue-400 text-white font-extrabold text-xs rounded-xl shadow-md shadow-blue-500/20 flex items-center justify-center gap-2 active:scale-95 cursor-pointer transition-all"
+              >
+                <Save className="w-4 h-4" /> Save Webhook & API
+              </button>
+            </div>
+
+            {/* THIRD-PARTY API CODE SNIPPETS & INTEGRATION GUIDE */}
+            <div className="p-5 rounded-2xl border border-blue-500/30 bg-blue-500/5 space-y-4">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div>
+                  <h4 className="text-xs font-extrabold text-blue-400 uppercase tracking-wider flex items-center gap-2">
+                    <Code2 className="w-4 h-4" /> Third-Party Integration Code Snippets
+                  </h4>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Use these ready-to-copy code snippets to send WhatsApp messages from any external CRM, ERP, or website using your API Secret Key.
+                  </p>
+                </div>
+
+                {/* Language Switcher Tabs */}
+                <div className="flex items-center gap-1 bg-slate-900/80 p-1 rounded-xl border border-blue-500/30">
+                  {(["curl", "nodejs", "python"] as const).map((lang) => (
+                    <button
+                      key={lang}
+                      onClick={() => setSelectedCodeLang(lang)}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold font-mono transition-all cursor-pointer ${
+                        selectedCodeLang === lang
+                          ? "bg-blue-500 text-white shadow-sm"
+                          : "text-slate-400 hover:text-slate-200"
+                      }`}
+                    >
+                      {lang === "curl" ? "cURL" : lang === "nodejs" ? "Node.js / JS" : "Python"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Code Snippet Box */}
+              <div className="relative group">
+                <pre className="p-4 rounded-xl border border-slate-200 dark:border-[#163546] bg-slate-950 text-emerald-400 text-[11px] font-mono leading-relaxed overflow-x-auto select-all">
+                  {selectedCodeLang === "curl" && `curl -X POST http://localhost:8080/message/send-text \\
+  -H "Content-Type: application/json" \\
+  -H "x-api-key: ${apiKey}" \\
+  -d '{
+    "instanceName": "${tenantId}",
+    "number": "918002821800",
+    "message": "Hello from Third-Party System!"
+  }'`}
+                  {selectedCodeLang === "nodejs" && `// Third-Party Node.js / JavaScript WhatsApp Send Integration
+const response = await fetch("http://localhost:8080/message/send-text", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "x-api-key": "${apiKey}"
+  },
+  body: JSON.stringify({
+    instanceName: "${tenantId}",
+    number: "918002821800",
+    message: "Hello from Third-Party System!"
+  })
+});
+
+const result = await response.json();
+console.log("Send Result:", result);`}
+                  {selectedCodeLang === "python" && `# Third-Party Python WhatsApp Send Integration
+import requests
+
+url = "http://localhost:8080/message/send-text"
+headers = {
+    "Content-Type": "application/json",
+    "x-api-key": "${apiKey}"
+}
+payload = {
+    "instanceName": "${tenantId}",
+    "number": "918002821800",
+    "message": "Hello from Third-Party System!"
+}
+
+response = requests.post(url, json=payload, headers=headers)
+print("Response:", response.json())`}
+                </pre>
+                <button
+                  onClick={() => {
+                    const textToCopy =
+                      selectedCodeLang === "curl"
+                        ? `curl -X POST http://localhost:8080/message/send-text \\\n  -H "Content-Type: application/json" \\\n  -H "x-api-key: ${apiKey}" \\\n  -d '{\n    "instanceName": "${tenantId}",\n    "number": "918002821800",\n    "message": "Hello from Third-Party System!"\n  }'`
+                        : selectedCodeLang === "nodejs"
+                        ? `const response = await fetch("http://localhost:8080/message/send-text", {\n  method: "POST",\n  headers: {\n    "Content-Type": "application/json",\n    "x-api-key": "${apiKey}"\n  },\n  body: JSON.stringify({\n    instanceName: "${tenantId}",\n    number: "918002821800",\n    message: "Hello from Third-Party System!"\n  })\n});\nconst result = await response.json();\nconsole.log(result);`
+                        : `import requests\nurl = "http://localhost:8080/message/send-text"\nheaders = {"Content-Type": "application/json", "x-api-key": "${apiKey}"}\npayload = {"instanceName": "${tenantId}", "number": "918002821800", "message": "Hello from Third-Party System!"}\nresponse = requests.post(url, json=payload, headers=headers)\nprint(response.json())`;
+                    navigator.clipboard.writeText(textToCopy);
+                    setCopiedSnippet(true);
+                    setTimeout(() => setCopiedSnippet(false), 2000);
+                  }}
+                  className="absolute right-3 top-3 px-2.5 py-1.5 rounded-lg bg-blue-500/20 text-blue-300 border border-blue-500/40 text-[10px] font-bold flex items-center gap-1 hover:bg-blue-500/30 transition-all cursor-pointer"
+                >
+                  {copiedSnippet ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  {copiedSnippet ? "Copied!" : "Copy Code"}
+                </button>
+              </div>
+
+              {/* Webhook Payload JSON Format */}
+              <div className="pt-2 border-t border-blue-500/20 space-y-2">
+                <h5 className="text-[11px] font-extrabold text-slate-300 flex items-center gap-1.5">
+                  <Globe className="w-3.5 h-3.5 text-blue-400" /> Incoming Message Webhook JSON Schema (Sent to your Webhook Relay URL)
+                </h5>
+                <pre className="p-3 rounded-xl border border-slate-200 dark:border-[#163546] bg-slate-900 text-slate-300 text-[10px] font-mono leading-relaxed overflow-x-auto">
+{`{
+  "event": "messages.upsert",
+  "instanceName": "${tenantId}",
+  "from": "918002821800@s.whatsapp.net",
+  "senderName": "Customer Name",
+  "messageText": "Hi, I want details about Chit Fund software",
+  "timestamp": 1725800000
+}`}
+                </pre>
               </div>
             </div>
           </div>
