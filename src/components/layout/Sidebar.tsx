@@ -67,8 +67,8 @@ export function Sidebar() {
 
       {/* Sidebar Container */}
       <aside
-        className={`w-64 bg-white dark:bg-[#06141b] h-screen fixed md:sticky top-0 left-0 flex flex-col p-4 z-50 border-r border-slate-200 dark:border-[#163546] transition-transform duration-300 ${
-          isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+        className={`w-64 bg-white dark:bg-[#06141b] h-screen fixed md:sticky top-0 left-0 flex flex-col p-4 z-40 md:z-10 border-r border-slate-200 dark:border-[#163546] transition-transform duration-300 ${
+          isMobileSidebarOpen ? "translate-x-0 z-40" : "-translate-x-full md:translate-x-0"
         }`}
       >
         {/* Brand Header */}

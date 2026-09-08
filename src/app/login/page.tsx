@@ -305,19 +305,41 @@ export default function LoginPage() {
                 return;
               }
 
-              // Strict Super Admin Credential Verification
-              const isValidSuperAdmin =
-                (cleanEmail === "admin@orlifeindia.com" || cleanEmail === "super@gmail.com" || cleanEmail === "admin@gmail.com") &&
-                (cleanPass === "orlife123" || cleanPass === "admin123" || cleanPass === "123456");
+              // Check custom updated credentials from localStorage or defaults
+              const customPass = typeof window !== "undefined" ? localStorage.getItem("orlife_superadmin_password") : null;
+              const savedUserStr = typeof window !== "undefined" ? localStorage.getItem("orlife_current_user") : null;
+              let savedUserObj: any = null;
+              if (savedUserStr) {
+                try { savedUserObj = JSON.parse(savedUserStr); } catch(e){}
+              }
+
+              const isValidEmail =
+                cleanEmail === "admin@orlifeindia.com" ||
+                cleanEmail === "super@gmail.com" ||
+                cleanEmail === "admin@gmail.com" ||
+                (savedUserObj && savedUserObj.email && cleanEmail === savedUserObj.email.toLowerCase());
+
+              // Determine active single valid password
+              const activeSavedPassword = customPass || savedUserObj?.password;
+
+              // If user saved a custom password, ONLY that exact password is valid!
+              // Otherwise fallback to default initial passwords
+              const isValidPassword = activeSavedPassword
+                ? cleanPass === activeSavedPassword
+                : (cleanPass === "orlife123" || cleanPass === "123456" || cleanPass === "admin123");
+
+              const isValidSuperAdmin = isValidEmail && isValidPassword;
 
               if (isValidSuperAdmin) {
                 const userObj = {
-                  name: "Super Admin",
+                  name: savedUserObj?.name || "Super Admin",
                   email: cleanEmail,
                   role: "Super Admin",
-                  phone: "+919246574995",
+                  phone: savedUserObj?.phone || "+919246574995",
+                  password: cleanPass,
                 };
                 localStorage.setItem("orlife_current_user", JSON.stringify(userObj));
+                localStorage.setItem("orlife_superadmin_password", cleanPass);
                 localStorage.removeItem("superadmin_impersonating_client");
                 window.dispatchEvent(new Event("user_session_changed"));
 

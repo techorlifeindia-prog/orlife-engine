@@ -6,7 +6,7 @@ import { getInitialSessionInfo, generateProfessionalApiToken, getUserSpecificApi
 import {
   Webhook, ShieldCheck, Globe, Key, Send, Eye, EyeOff,
   RefreshCw, CheckCircle2, AlertCircle, Sparkles, Copy,
-  Check, Zap, Server, Lock
+  Check, Zap, Server, Lock, User, Save
 } from "lucide-react";
 
 const AI_ENDPOINTS = [
@@ -26,8 +26,19 @@ export default function SettingsPage() {
   useEffect(() => {
     setSession(getInitialSessionInfo());
     setApiToken(getUserSpecificApiToken());
+
+    // Check query params for tab selection (e.g. /settings?tab=whatsapp)
+    if (typeof window !== "undefined") {
+      const searchParams = new URLSearchParams(window.location.search);
+      const tabParam = searchParams.get("tab") as Section;
+      if (tabParam && ["whatsapp", "ai", "system"].includes(tabParam)) {
+        setOpenSection(tabParam);
+      }
+    }
+
     const syncSession = () => {
-      setSession(getInitialSessionInfo());
+      const sess = getInitialSessionInfo();
+      setSession(sess);
       setApiToken(getUserSpecificApiToken());
     };
     window.addEventListener("storage", syncSession);

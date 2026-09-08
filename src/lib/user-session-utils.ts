@@ -5,6 +5,7 @@ export interface SessionUser {
   role: string;
   email: string;
   phone: string;
+  password?: string;
 }
 
 export interface SessionInfo {
@@ -26,6 +27,7 @@ export function getInitialSessionInfo(): SessionInfo {
         role: "Client View",
         email: "client@orlife.com",
         phone: "",
+        password: "",
       },
     };
   }
@@ -43,6 +45,7 @@ export function getInitialSessionInfo(): SessionInfo {
           role: "Client View",
           email: parsed.email || "client@orlife.com",
           phone: parsed.phone || "",
+          password: parsed.password || "",
         },
       };
     } catch (e) {}
@@ -53,6 +56,7 @@ export function getInitialSessionInfo(): SessionInfo {
     try {
       const parsed = JSON.parse(savedUser);
       const isSuper = parsed.role === "Super Admin" || (parsed.email && parsed.email.toLowerCase().includes("admin")) || (parsed.phone && parsed.phone.includes("9246574995"));
+      const savedPass = parsed.password || (typeof window !== "undefined" ? localStorage.getItem("orlife_superadmin_password") : null) || "orlife123";
       return {
         isImpersonating: false,
         isClientView: !isSuper,
@@ -62,6 +66,7 @@ export function getInitialSessionInfo(): SessionInfo {
           role: isSuper ? "Super Admin" : (parsed.role || "Client Account"),
           email: parsed.email || (isSuper ? "admin@orlifeindia.com" : "user@orlife.com"),
           phone: parsed.phone || "",
+          password: savedPass,
         },
       };
     } catch (e) {}
