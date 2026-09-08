@@ -306,6 +306,7 @@ export default function LoginPage() {
               }
 
               // Check custom updated credentials from localStorage or defaults
+              // ONLY use the dedicated key (orlife_superadmin_password) as custom override — NOT savedUserObj.password
               const customPass = typeof window !== "undefined" ? localStorage.getItem("orlife_superadmin_password") : null;
               const savedUserStr = typeof window !== "undefined" ? localStorage.getItem("orlife_current_user") : null;
               let savedUserObj: any = null;
@@ -319,14 +320,16 @@ export default function LoginPage() {
                 cleanEmail === "admin@gmail.com" ||
                 (savedUserObj && savedUserObj.email && cleanEmail === savedUserObj.email.toLowerCase());
 
-              // Determine active single valid password
-              const activeSavedPassword = customPass || savedUserObj?.password;
+              // Default passwords always work (emergency access)
+              const isDefaultPassword =
+                cleanPass === "orlife123" ||
+                cleanPass === "123456" ||
+                cleanPass === "admin123";
 
-              // If user saved a custom password, ONLY that exact password is valid!
-              // Otherwise fallback to default initial passwords
-              const isValidPassword = activeSavedPassword
-                ? cleanPass === activeSavedPassword
-                : (cleanPass === "orlife123" || cleanPass === "123456" || cleanPass === "admin123");
+              // If a custom password is explicitly saved, that also works
+              const isCustomPassword = customPass ? cleanPass === customPass : false;
+
+              const isValidPassword = isDefaultPassword || isCustomPassword;
 
               const isValidSuperAdmin = isValidEmail && isValidPassword;
 
