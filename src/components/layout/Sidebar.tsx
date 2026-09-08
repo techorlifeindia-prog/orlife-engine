@@ -74,12 +74,12 @@ export function Sidebar() {
         {/* Brand Header */}
         <div className="flex items-center justify-between mb-8 px-2">
           <div className="flex items-center gap-3">
-            <div className="bg-[#10b981]/20 border border-[#10b981]/40 p-2.5 rounded-2xl shadow-[0_0_15px_rgba(16,185,129,0.3)] text-[#10b981]">
-              <Zap className="w-5 h-5 fill-[#10b981]" />
+            <div className="bg-[#0e1c2b] border border-[#1b3248] p-1 rounded-xl w-10 h-10 flex items-center justify-center shadow-[0_0_15px_rgba(16,185,129,0.2)] shrink-0">
+              <img src="/logo.png" alt="OrLife Engine Logo" className="w-full h-full object-contain rounded-lg" />
             </div>
             <div>
-              <h1 className="font-bold text-lg tracking-tight text-slate-900 dark:text-white flex items-center gap-1.5">
-                OrLife Connect
+              <h1 className="font-bold text-base tracking-tight text-slate-900 dark:text-white flex items-center gap-1.5">
+                OrLife Engine
               </h1>
               <p className="text-[11px] text-emerald-600 dark:text-emerald-400/80 font-mono">CYBERHUB SaaS v2.0</p>
             </div>

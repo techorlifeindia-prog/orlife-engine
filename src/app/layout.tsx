@@ -7,8 +7,8 @@ import { AppLayout } from "@/components/layout/AppLayout";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "OrLife Connect | WhatsApp SaaS",
-  description: "High-performance WhatsApp Multi-Sender SaaS",
+  title: "OrLife Engine | WhatsApp Gateway",
+  description: "High-performance WhatsApp Multi-Sender Engine & Automation Portal",
 };
 
 export default function RootLayout({

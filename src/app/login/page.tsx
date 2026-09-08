@@ -117,15 +117,15 @@ export default function LoginPage() {
         
         {/* Brand Icon Badge */}
         <div className="flex justify-center">
-          <div className="w-14 h-14 rounded-2xl bg-[#10b981]/10 border border-[#10b981]/30 flex items-center justify-center shadow-inner text-[#10b981]">
-            <Zap className="w-7 h-7 fill-[#10b981]" />
+          <div className="w-16 h-16 rounded-2xl bg-[#0e1c2b] border border-[#1b3248] p-1.5 flex items-center justify-center shadow-xl shadow-emerald-500/10">
+            <img src="/logo.png" alt="OrLife Engine Logo" className="w-full h-full object-contain rounded-xl" />
           </div>
         </div>
 
         {/* Header Title */}
         <div className="text-center space-y-1">
           <h2 className="text-2xl font-black text-slate-100 tracking-tight">
-            OrLife Connect SaaS Portal
+            OrLife Engine
           </h2>
           <p className="text-xs text-slate-400">
             Sign in to manage your company & WhatsApp automation
@@ -367,7 +367,7 @@ export default function LoginPage() {
 
         {/* Footer info */}
         <p className="text-[11px] text-slate-500 text-center pt-2">
-          Powered by OrLife Connect WhatsApp AOC Engine & Multi-Sender Gateway V2.1
+          Powered by OrLife Engine WhatsApp AOC Gateway V2.1
         </p>
 
       </div>
