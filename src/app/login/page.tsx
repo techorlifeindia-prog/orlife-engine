@@ -297,12 +297,24 @@ export default function LoginPage() {
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              if (email.trim() && password.trim()) {
-                const isSuper = email.trim().toLowerCase() === "super@gmail.com" || email.trim().toLowerCase().includes("super");
+              const cleanEmail = email.trim().toLowerCase();
+              const cleanPass = password.trim();
+
+              if (!cleanEmail || !cleanPass) {
+                setMessageAlert({ type: "error", text: "Please enter Super Admin email and password" });
+                return;
+              }
+
+              // Strict Super Admin Credential Verification
+              const isValidSuperAdmin =
+                (cleanEmail === "admin@orlifeindia.com" || cleanEmail === "super@gmail.com" || cleanEmail === "admin@gmail.com") &&
+                (cleanPass === "orlife123" || cleanPass === "admin123" || cleanPass === "123456");
+
+              if (isValidSuperAdmin) {
                 const userObj = {
-                  name: isSuper ? "Super Admin" : "Client User",
-                  email: email.trim(),
-                  role: isSuper ? "Super Admin" : "Client View",
+                  name: "Super Admin",
+                  email: cleanEmail,
+                  role: "Super Admin",
                   phone: "+919246574995",
                 };
                 localStorage.setItem("orlife_current_user", JSON.stringify(userObj));
@@ -311,13 +323,13 @@ export default function LoginPage() {
 
                 setMessageAlert({
                   type: "success",
-                  text: `🟢 ${isSuper ? "Super Admin" : "User"} Authenticated (${email.trim()})! Redirecting...`,
+                  text: `🟢 Super Admin Authenticated (${cleanEmail})! Redirecting...`,
                 });
                 setTimeout(() => {
                   window.location.href = "/";
                 }, 1000);
               } else {
-                setMessageAlert({ type: "error", text: "Please enter Super Admin email and password" });
+                setMessageAlert({ type: "error", text: "❌ Invalid Super Admin email or password! Access Denied." });
               }
             }}
             className="space-y-4"

@@ -52,15 +52,15 @@ export function getInitialSessionInfo(): SessionInfo {
   if (savedUser) {
     try {
       const parsed = JSON.parse(savedUser);
-      const isSuper = parsed.role === "Super Admin" || parsed.phone?.includes("9246574995") || parsed.email === "super@gmail.com";
+      const isSuper = parsed.role === "Super Admin" || (parsed.email && parsed.email.toLowerCase().includes("admin")) || (parsed.phone && parsed.phone.includes("9246574995"));
       return {
         isImpersonating: false,
         isClientView: !isSuper,
         isSuperAdmin: isSuper,
         user: {
           name: parsed.name || (isSuper ? "Super Admin" : "Logged User"),
-          role: parsed.role || (isSuper ? "Super Admin" : "Client Account"),
-          email: parsed.email || (isSuper ? "super@gmail.com" : "user@orlife.com"),
+          role: isSuper ? "Super Admin" : (parsed.role || "Client Account"),
+          email: parsed.email || (isSuper ? "admin@orlifeindia.com" : "user@orlife.com"),
           phone: parsed.phone || "",
         },
       };
@@ -98,7 +98,7 @@ export function getFilteredInstancesForUser(rawInstances: Instance[]): Instance[
       try {
         const parsed = JSON.parse(savedUser);
         userPhone = parsed.phone || "";
-        if (parsed.role === "Super Admin" || userPhone.includes("9246574995") || parsed.email === "super@gmail.com") {
+        if (parsed.role === "Super Admin" || (parsed.email && parsed.email.toLowerCase().includes("admin")) || userPhone.includes("9246574995")) {
           isSuperAdmin = true;
         }
       } catch (e) {}

@@ -44,7 +44,9 @@ export function Header({ title = "Dashboard Overview" }: { title?: string }) {
     window.location.href = "/clients";
   };
 
-  const initialLetter = currentUser.name.charAt(0).toUpperCase();
+  const displayName = mounted ? currentUser.name : "";
+  const displayRole = mounted ? currentUser.role : "";
+  const initialLetter = mounted ? (currentUser.name ? currentUser.name.charAt(0).toUpperCase() : "U") : "";
 
   return (
     <header className="h-16 bg-white dark:bg-[#06141b] border-b border-slate-200 dark:border-[#163546] sticky top-0 z-30 flex items-center justify-between px-4 sm:px-6 gap-4">
@@ -112,13 +114,13 @@ export function Header({ title = "Dashboard Overview" }: { title?: string }) {
             className="flex items-center gap-3 hover:opacity-90 transition-opacity focus:outline-none"
           >
             <div className="flex flex-col items-end hidden sm:flex">
-              <span suppressHydrationWarning className="text-xs font-bold text-slate-900 dark:text-white max-w-[140px] truncate">{currentUser.name}</span>
-              <span suppressHydrationWarning className="text-[11px] font-mono text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> {currentUser.role}
+              <span className="text-xs font-bold text-slate-900 dark:text-white max-w-[140px] truncate">{displayName}</span>
+              <span className="text-[11px] font-mono text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                {displayRole && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>} {displayRole}
               </span>
             </div>
             <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 p-0.5 shadow-[0_0_12px_rgba(16,185,129,0.4)]">
-              <div suppressHydrationWarning className="w-full h-full rounded-[10px] bg-white dark:bg-[#06141b] flex items-center justify-center text-slate-900 dark:text-white font-bold text-sm">
+              <div className="w-full h-full rounded-[10px] bg-white dark:bg-[#06141b] flex items-center justify-center text-slate-900 dark:text-white font-bold text-sm">
                 {initialLetter}
               </div>
             </div>
@@ -130,13 +132,13 @@ export function Header({ title = "Dashboard Overview" }: { title?: string }) {
               <div className="p-3 bg-slate-50 dark:bg-[#06141b] rounded-xl border border-slate-200 dark:border-[#163546] space-y-1">
                 <div className="flex items-center justify-between">
                   <p className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1 truncate max-w-[140px]">
-                    <Shield className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400 shrink-0" /> {currentUser.name}
+                    <Shield className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400 shrink-0" /> {displayName}
                   </p>
                   <span className="text-[10px] bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-mono font-bold px-2 py-0.5 rounded border border-emerald-500/20 dark:border-emerald-500/30">
-                    {currentUser.role}
+                    {displayRole}
                   </span>
                 </div>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-mono truncate">{currentUser.email}</p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-mono truncate">{mounted ? currentUser.email : ""}</p>
               </div>
 
               {isImpersonating && (

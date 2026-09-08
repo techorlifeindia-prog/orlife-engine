@@ -12,11 +12,13 @@ interface StatCardsProps {
 }
 
 export function StatCards({ instances, loading, engineOnline }: StatCardsProps) {
+  const [mounted, setMounted] = useState(false);
   const [session, setSession] = useState(() => getInitialSessionInfo());
   const isClientView = session.isClientView;
   const clientName = session.user.name;
 
   useEffect(() => {
+    setMounted(true);
     setSession(getInitialSessionInfo());
     const syncSession = () => {
       setSession(getInitialSessionInfo());
@@ -123,6 +125,18 @@ export function StatCards({ instances, loading, engineOnline }: StatCardsProps) 
 
   const activeStats = isClientView ? clientStats : adminStats;
 
+  if (!mounted) {
+    return (
+      <div className="space-y-2.5">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+          {[1, 2, 3, 4].map((n) => (
+            <div key={n} className="h-28 rounded-xl bg-[#0b1d28] border border-[#1b3a4e] animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-2.5">
       {isClientView && (
@@ -130,7 +144,7 @@ export function StatCards({ instances, loading, engineOnline }: StatCardsProps) 
           <div className="flex items-center gap-2 min-w-0">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
             <p className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">
-              Welcome, <span suppressHydrationWarning className="text-emerald-600 dark:text-emerald-400">{clientName}</span> — Professional SaaS Client Dashboard
+              Welcome, <span className="text-emerald-600 dark:text-emerald-400">{mounted ? clientName : ""}</span> — Professional SaaS Client Dashboard
             </p>
           </div>
           <span className="text-[10px] bg-white dark:bg-[#06141c] text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-lg font-mono font-bold border border-emerald-500/30 shadow-sm shrink-0">

@@ -9,10 +9,12 @@ interface TrafficWidgetProps {
 }
 
 export function TrafficWidget({ engineOnline }: TrafficWidgetProps) {
+  const [mounted, setMounted] = useState(false);
   const [session, setSession] = useState(() => getInitialSessionInfo());
   const isClientView = session.isClientView;
 
   useEffect(() => {
+    setMounted(true);
     setSession(getInitialSessionInfo());
     const syncSession = () => {
       setSession(getInitialSessionInfo());
@@ -26,6 +28,12 @@ export function TrafficWidget({ engineOnline }: TrafficWidgetProps) {
       window.removeEventListener("user_session_changed", syncSession);
     };
   }, []);
+
+  if (!mounted) {
+    return (
+      <div className="rounded-2xl bg-white dark:bg-[#0b1d28] border border-slate-200 dark:border-[#1b3a4e] p-3.5 space-y-2.5 shadow-md flex flex-col justify-between animate-pulse min-h-[220px]" />
+    );
+  }
 
   return (
     <div className="rounded-2xl bg-white dark:bg-[#0b1d28] border border-slate-200 dark:border-[#1b3a4e] p-3.5 space-y-2.5 shadow-md flex flex-col justify-between">
