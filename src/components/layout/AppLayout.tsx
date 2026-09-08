@@ -1,12 +1,30 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const isLoginPage = pathname === "/login";
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    if (isLoginPage) {
+      setIsAuthenticated(true);
+      return;
+    }
+
+    const savedUser = localStorage.getItem("orlife_current_user");
+    if (!savedUser) {
+      setIsAuthenticated(false);
+      router.push("/login");
+    } else {
+      setIsAuthenticated(true);
+    }
+  }, [pathname, isLoginPage, router]);
 
   if (isLoginPage) {
     return (
@@ -14,6 +32,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         {children}
         <ConfirmDialog />
       </main>
+    );
+  }
+
+  if (isAuthenticated === false) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#06141b] text-slate-400 text-sm">
+        Redirecting to OrLife Connect Portal Login...
+      </div>
     );
   }
 
@@ -25,3 +51,4 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
+

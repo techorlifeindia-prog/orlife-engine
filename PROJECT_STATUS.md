@@ -141,7 +141,34 @@ OrLife Connect is a high-performance, enterprise-grade WhatsApp Multi-Account Ma
 
 ---
 
-## 🚀 PHASE 7: Cloud Infrastructure & API Bridge (PLANNED)
-- [ ] **Oracle Cloud Backend Deployment:** Fastify / Node.js API server running Baileys / Evolution API, PostgreSQL, Redis queue.
-- [ ] **Webhook & ERP Integration:** Seamless API sync with OrLife AI Hub & external CRM/ERP platforms.
+## 🎉 PHASE 7: Oracle Cloud Deployment (COMPLETED)
+
+### ✅ Completed Steps:
+- [x] **DNS A Record Configured:** `api.orlifeindia.com` → `129.225.118.77` on BigRock
+- [x] **SSH Key Saved:** `C:\Project\orlife-connect\oracle-ssh-key.key`
+- [x] **Oracle Cloud Account:** chamunda industries — India South (Hyderabad) — `orlifeindia@gmail.com`
+- [x] **Target Subdomain:** `https://api.orlifeindia.com`
+- [x] **Oracle Region:** `ap-hyderabad-1` (Home region — India South Hyderabad)
+- [x] **Oracle VM Instance Created:** `orlife-engine` — Ubuntu 22.04 — **RUNNING** 🟢
+- [x] **Public IP Assigned:** `129.225.118.77`
+- [x] **Swap Memory Configured:** 2 GB Swap file added (3 GB total usable memory)
+- [x] **Firewall Ingress Rules:** Ports 22, 80 (HTTP), 443 (HTTPS) opened in Security List
+- [x] **Software Installed:** Node.js 20.x, PM2, Nginx, Certbot
+- [x] **GitHub Repo Synced:** `techorlifeindia-prog/orlife-engine` cloned to `/app`
+- [x] **Production Build & PM2:** Next.js production build succeeded, PM2 processes `orlife-connect-ui` & `whatsapp-engine` online
+- [x] **Nginx Reverse Proxy:** Configured for `api.orlifeindia.com` → `localhost:3002` & `/whatsapp-engine/` → `localhost:8080`
+- [x] **SSL Certificate (HTTPS):** Let's Encrypt SSL active on **`https://api.orlifeindia.com`** 🔒 (Status: `HTTP 200 OK`)
+
+### 🔑 Active Server Details & Credentials:
+- **Live Production URL:** `https://api.orlifeindia.com`
+- **Server Public IP:** `129.225.118.77`
+- **SSH Private Key:** `C:\Project\orlife-connect\oracle-ssh-key.key`
+- **1-Click SSH Script:** [`connect_server.bat`](file:///C:/Project/orlife-connect/connect_server.bat) (Double click to connect)
+- **1-Click Deployment Script:** [`deploy_update.bat`](file:///C:/Project/orlife-connect/deploy_update.bat) (Double click to push & deploy)
+- **Full Credentials Doc:** [`SERVER_CREDENTIALS.md`](file:///C:/Project/orlife-connect/SERVER_CREDENTIALS.md)
+- **Oracle Account:** `orlifeindia@gmail.com` — cloud.oracle.com — India South (Hyderabad)
+- **GitHub Repo:** `https://github.com/techorlifeindia-prog/orlife-engine`
+
+### ⚠️ Webhook & ERP Integration (Phase 7B — After Deployment):
+- [ ] Seamless API sync with OrLife AI Hub & external CRM/ERP platforms.
 
