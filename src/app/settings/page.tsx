@@ -22,8 +22,10 @@ export default function SettingsPage() {
   const [openSection, setOpenSection] = useState<Section>("whatsapp");
   const [session, setSession] = useState(() => getInitialSessionInfo());
   const [apiToken, setApiToken] = useState(() => getUserSpecificApiToken());
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
+    setIsMounted(true);
     setSession(getInitialSessionInfo());
     setApiToken(getUserSpecificApiToken());
 
@@ -58,6 +60,20 @@ export default function SettingsPage() {
   const [isTesting,  setIsTesting]   = useState(false);
   const [isSaved,    setIsSaved]     = useState(false);
   const [testResult, setTestResult]  = useState<{ success: boolean; message: string; latencyMs?: number } | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("orlife_whatsapp_api_config");
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (parsed.gatewayUrl) setGatewayUrl(parsed.gatewayUrl);
+          if (parsed.sessionKey) setSessionKey(parsed.sessionKey);
+          if (parsed.apiToken) setApiToken(parsed.apiToken);
+        } catch (e) {}
+      }
+    }
+  }, []);
 
 
   // AI Hub Config state
@@ -150,6 +166,8 @@ export default function SettingsPage() {
     { key: "ai",       icon: <Sparkles   className="w-4 h-4" />, title: "Flash AI Hub",     sub: "Copy API Endpoints",       badge: "ACTIVE"  },
     { key: "system",   icon: <ShieldCheck className="w-4 h-4" />, title: "System Config",    sub: "Webhooks · Anti-Ban",      badge: undefined },
   ];
+
+  if (!isMounted) return null;
 
   return (
     <div className="min-h-full pb-8">

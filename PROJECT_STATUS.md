@@ -210,3 +210,6 @@ OrLife Connect is a high-performance, enterprise-grade WhatsApp Multi-Account Ma
 - [x] **Password login fixed** (default passwords always work: `123456`, `orlife123`, `admin123`)
 - [x] **WhatsApp OTP working** via AOC Portal API on production
 
+## 🐛 Bug Fixes (COMPLETED)
+- [x] **502 Bad Gateway Fixed:** Resolved Next.js build crash loop on Oracle VPS caused by `next/font` fetching timeouts (`ETIMEDOUT`). PM2 Next.js process (`orlife-connect-ui`) now stable and 100% online.
+- [x] **AI Hub / Ollama HTTPS Issue:** Fixed Mixed Content warnings blocking local AI `http://localhost:8090` calls on production by creating secure Next.js Server proxy routes (`/api/ai-hub/ollama-status`). Ollama AI now connects cleanly over HTTPS.
