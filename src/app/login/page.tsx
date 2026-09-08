@@ -28,6 +28,15 @@ export default function LoginPage() {
     return () => clearInterval(interval);
   }, [resendTimer]);
 
+  // Auto-submit OTP when 4 digits typed — useEffect guarantees fresh otpCode state
+  useEffect(() => {
+    if (otpCode.length === 4 && activeTab === "whatsapp" && step === "ENTER_OTP" && !isVerifying) {
+      const fakeEvent = { preventDefault: () => {} } as React.FormEvent;
+      handleVerifyOtp(fakeEvent);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [otpCode]);
+
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!phone.trim()) {
@@ -243,10 +252,7 @@ export default function LoginPage() {
                     value={otpCode}
                     onChange={(e) => {
                       const val = e.target.value.replace(/[^0-9]/g, "").slice(0, 4);
-                      setOtpCode(val);
-                      if (val.length === 4) {
-                        handleVerifyOtp(e);
-                      }
+                      setOtpCode(val); // auto-submit handled by useEffect above
                     }}
                     placeholder="1234"
                     className="w-full bg-[#050e17] border border-emerald-500/40 rounded-2xl px-4 py-3.5 text-center text-lg font-mono font-black tracking-widest text-emerald-400 placeholder:text-slate-700 focus:outline-none focus:border-emerald-400 transition-all"
