@@ -172,3 +172,38 @@ OrLife Connect is a high-performance, enterprise-grade WhatsApp Multi-Account Ma
 ### ⚠️ Webhook & ERP Integration (Phase 7B — After Deployment):
 - [ ] Seamless API sync with OrLife AI Hub & external CRM/ERP platforms.
 
+---
+
+## 📋 PENDING TASKS (To Do Later)
+
+### 🔧 Oracle Cloud VM — RAM Upgrade (PENDING)
+**Current:** AMD Micro → 1 CPU, 1GB RAM  
+**Target:** Ampere A1.Flex → 4 CPU, **24GB RAM** (Still FREE!)
+
+**Steps to do:**
+1. Login → [cloud.oracle.com](https://cloud.oracle.com) (Account: `orlifeindia@gmail.com`)
+2. `Compute` → `Instances` → Instance `129.225.118.77`
+3. **Stop** the instance
+4. **Edit** → **Shape** → Change to:
+   - Shape: `VM.Standard.A1.Flex`
+   - OCPUs: `4`
+   - RAM: `24 GB`
+5. **Save** → **Start** instance
+6. After restart: SSH in and run `pm2 resurrect` or `pm2 start ecosystem.config.js`
+7. Verify: `free -h` should show ~24GB
+
+> ⚠️ IP stays same. `/app` data is safe. Downtime: ~5-10 min.
+
+---
+
+## 🚀 CI/CD Pipeline (COMPLETED — Sep 8, 2026)
+- [x] **GitHub Actions Auto-Deploy:** Push to `master` → auto deploy to Oracle VM
+- [x] **GitHub Secrets set:** `ORACLE_VM_IP` + `ORACLE_SSH_KEY`
+- [x] **Workflow file:** `.github/workflows/deploy.yml`
+- [x] **Production .env.local:** AOC API Keys deployed to `/app/.env.local`
+
+## 🔐 Auth Fixes (COMPLETED — Sep 8, 2026)
+- [x] **OTP auto-submit race condition fixed** (useEffect instead of onChange stale state)
+- [x] **Password login fixed** (default passwords always work: `123456`, `orlife123`, `admin123`)
+- [x] **WhatsApp OTP working** via AOC Portal API on production
+
