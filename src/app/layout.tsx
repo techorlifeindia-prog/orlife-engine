@@ -1,10 +1,7 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AppLayout } from "@/components/layout/AppLayout";
-
-const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "OrLife Engine | WhatsApp Gateway",
@@ -23,7 +20,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.className} bg-slate-50 dark:bg-[#06141b] text-slate-900 dark:text-slate-100 antialiased min-h-screen`}>
+      <body className="font-sans bg-slate-50 dark:bg-[#06141b] text-slate-900 dark:text-slate-100 antialiased min-h-screen">
         <ThemeProvider
           attribute="class"
           defaultTheme="dark"
