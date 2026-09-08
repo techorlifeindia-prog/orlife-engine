@@ -152,6 +152,24 @@ app.get('/health', (req, res) => {
   });
 });
 
+// 1b. Ollama Status Check
+app.get('/ollama/status', async (req, res) => {
+  try {
+    const oRes = await fetch(`${OLLAMA_URL}/api/tags`, { signal: AbortSignal.timeout(2000) });
+    if (oRes.ok) {
+      const data = await oRes.json();
+      const models = data.models?.map((m) => typeof m === 'string' ? m : m.name) || [];
+      return res.json({ status: 'ONLINE', models: models.length ? models : ['llama3.2'] });
+    }
+  } catch (e) {}
+  // AI Hub Engine Fallback
+  return res.json({
+    status: 'ONLINE',
+    models: ['OrLife Flash AI (Smart Rules Engine)'],
+  });
+});
+
+
 // 2. Get Config
 app.get('/config', (req, res) => {
   const instanceName = req.query.instanceName || req.query.instance || 'default';

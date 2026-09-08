@@ -193,11 +193,18 @@ async function createWhatsAppSession(instanceName) {
       sessionObj.status = 'close';
       sessionObj.qrCodeBase64 = null;
 
-      if (statusCode !== DisconnectReason.loggedOut) {
-        console.log(`[WhatsApp Engine] Auto-reconnecting instance: ${instanceName}`);
-        sessions.delete(instanceName);
-        createWhatsAppSession(instanceName);
+      const isLoggedOut = statusCode === DisconnectReason.loggedOut || statusCode === 401;
+      if (isLoggedOut) {
+        console.log(`[WhatsApp Engine] Session logged out (401) for ${instanceName}. Purging expired credentials.`);
+        const sessionPath = path.join(SESSIONS_DIR, instanceName);
+        if (fs.existsSync(sessionPath)) {
+          fs.rmSync(sessionPath, { recursive: true, force: true });
+        }
       }
+
+      console.log(`[WhatsApp Engine] Re-initializing instance for fresh QR scan: ${instanceName}`);
+      sessions.delete(instanceName);
+      createWhatsAppSession(instanceName);
     }
   });
 

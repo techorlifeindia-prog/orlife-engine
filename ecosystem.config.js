@@ -18,6 +18,15 @@ module.exports = {
         NODE_ENV: "production",
         PORT: 8080
       }
+    },
+    {
+      name: "ai-hub-server",
+      script: "ai-hub-server.js",
+      cwd: "/app/whatsapp-engine",
+      env: {
+        NODE_ENV: "production",
+        PORT: 8090
+      }
     }
   ]
 };

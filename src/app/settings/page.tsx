@@ -317,7 +317,7 @@ export default function SettingsPage() {
                     <Globe className="w-3.5 h-3.5 text-emerald-500" /> Server Base URL
                   </label>
                   <input type="text" value={aiBaseUrl} onChange={e => setAiBaseUrl(e.target.value)}
-                    placeholder="http://localhost:8090"
+                    placeholder="http://localhost:8001"
                     className="w-full bg-white dark:bg-[#0b1d28] border border-slate-200 dark:border-[#1b3a4e] rounded-xl px-3 py-2 text-xs font-mono text-slate-900 dark:text-slate-100 focus:outline-none focus:border-emerald-500" />
                   <span className="text-[10px] text-slate-400">Local (8090) or VPS IP/Domain</span>
                 </div>

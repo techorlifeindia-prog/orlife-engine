@@ -98,6 +98,9 @@ OrLife Connect is a high-performance, enterprise-grade WhatsApp Multi-Account Ma
   - Dashboard Overview (`/`), Devices (`/devices`), Campaigns (`/campaigns`), and Contacts (`/contacts`) now strictly use `getFilteredInstancesForUser()`.
   - Client accounts (e.g. `Chamunda Industries` `+918002821800`) only view and manage their own connected WhatsApp instances. Other users' accounts/devices will NEVER appear on their dashboard overview or device lists.
   - Super Admin (`+919246574995`) maintains full visibility across all client instances.
+- [x] **Live WhatsApp Engine Server Health Status Indicators (Port 8080 & 8090):**
+  - Added real-time glowing status badge `WA Engine: Online (8080) ✅` on top global navigation Header (`Header.tsx`) across all screens.
+  - Added dedicated WhatsApp Engine Server Health Banner on `/devices` page displaying real-time Port 8080 status (`Server Online & Operational ✅`), pulse indicator, and instant "Refresh Health" trigger.
 - [x] **AOC WhatsApp 4-Digit OTP Authentication:**
   - Integrated AOC Portal WhatsApp API (`https://api.aoc-portal.com/v1/whatsapp` & `/v1/messages` using `AOC_SENDER_NUMBER="919642218004"`).
   - Implemented 4-Digit OTP (`1000`–`9999`) with instant auto-submission as soon as the 4th digit is typed.

@@ -143,18 +143,30 @@ export default function AutomationRulesPage() {
   const checkOllamaStatus = async () => {
     setOllamaStatus("checking");
     try {
+      // 1. Try local Ollama direct port 11434
+      try {
+        const directRes = await fetch("http://localhost:11434/api/tags", { signal: AbortSignal.timeout(2000) });
+        if (directRes.ok) {
+          const directData = await directRes.json();
+          const modelsList = directData.models?.map((m: any) => typeof m === "string" ? m : m.name) || [];
+          setOllamaStatus("online");
+          setOllamaModels(modelsList);
+          return;
+        }
+      } catch {}
+
+      // 2. Fallback to AI Hub backend /ollama/status
       const res = await fetch(`${AI_HUB_URL}/ollama/status`, { signal: AbortSignal.timeout(4000) });
       if (res.ok) {
         const data = await res.json();
         if (data.status === "ONLINE") {
           setOllamaStatus("online");
-          setOllamaModels(data.models?.map((m: { name: string }) => m.name) || []);
-        } else {
-          setOllamaStatus("offline");
+          const modelsList = data.models?.map((m: any) => typeof m === "string" ? m : (m.name || String(m))) || [];
+          setOllamaModels(modelsList);
+          return;
         }
-      } else {
-        setOllamaStatus("offline");
       }
+      setOllamaStatus("offline");
     } catch {
       setOllamaStatus("offline");
     }
