@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Lock, Smartphone, Send, CheckCircle2, AlertCircle, RefreshCw, KeyRound, ArrowRight, ShieldCheck, Zap } from "lucide-react";
+import { Lock, Smartphone, Send, CheckCircle2, AlertCircle, RefreshCw, KeyRound, ArrowRight, ShieldCheck, Zap, Eye, EyeOff } from "lucide-react";
 
 export default function LoginPage() {
   const [activeTab, setActiveTab] = useState<"password" | "whatsapp">("whatsapp");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [otpCode, setOtpCode] = useState("");
 
   const [step, setStep] = useState<"ENTER_PHONE" | "ENTER_OTP">("ENTER_PHONE");
@@ -202,7 +203,7 @@ export default function LoginPage() {
                       type="text"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
-                      placeholder="9876543210"
+                      placeholder=""
                       className="w-full bg-transparent px-3.5 py-3 text-xs font-mono font-bold text-slate-100 placeholder:text-slate-600 focus:outline-none"
                     />
                   </div>
@@ -327,20 +328,32 @@ export default function LoginPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="super@gmail.com"
+                placeholder=""
                 className="w-full bg-[#050e17] border border-[#172c40] rounded-2xl px-4 py-3 text-xs font-mono font-bold text-amber-400 focus:outline-none focus:border-amber-500"
+                autoComplete="off"
               />
             </div>
 
             <div>
               <label className="text-xs font-semibold text-slate-300 block mb-1.5">Password</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="123456"
-                className="w-full bg-[#050e17] border border-[#172c40] rounded-2xl px-4 py-3 text-xs font-mono text-slate-100 focus:outline-none focus:border-amber-500"
-              />
+              <div className="relative flex items-center">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder=""
+                  className="w-full bg-[#050e17] border border-[#172c40] rounded-2xl pl-4 pr-11 py-3 text-xs font-mono text-slate-100 focus:outline-none focus:border-amber-500"
+                  autoComplete="new-password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 text-slate-400 hover:text-amber-400 p-1.5 transition-colors"
+                  title={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
 
             <button
