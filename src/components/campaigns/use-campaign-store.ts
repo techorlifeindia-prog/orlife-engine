@@ -35,12 +35,57 @@ export function useCampaignStore() {
   const [instances, setInstances] = useState<Instance[]>([]);
   const [selectedInstance, setSelectedInstance] = useState<string>("");
 
-  const [speedMode, setSpeedMode] = useState<SpeedMode>("Normal");
+  const [speedMode, setSpeedMode] = useState<SpeedMode>("Slow");
+
+  // ── Auto-Saving Handlers ────────────────────────────────────
+  const handleSetSelectedInstance = (inst: string) => {
+    setSelectedInstance(inst);
+    try {
+      localStorage.setItem(STORAGE_KEYS.SELECTED_INSTANCE, inst);
+    } catch (e) { /* ignore */ }
+
+    if (inst === "aoc" || inst === "AOC Portal API") {
+      // Official AOC API has 0% ban risk — set Turbo mode!
+      setSpeedMode("Turbo");
+      try {
+        localStorage.setItem(STORAGE_KEYS.SPEED_MODE, "Turbo");
+      } catch (e) { /* ignore */ }
+    }
+  };
 
   const handleSetSpeedMode = (mode: SpeedMode) => {
-    setSpeedMode(mode);
+    const targetMode = mode === "Turbo" ? "Turbo" : "Slow";
+    setSpeedMode(targetMode);
     try {
-      localStorage.setItem(STORAGE_KEYS.SPEED_MODE, mode);
+      localStorage.setItem(STORAGE_KEYS.SPEED_MODE, targetMode);
+    } catch (e) { /* ignore */ }
+  };
+
+  const handleSetGroupNameInput = (val: string) => {
+    setGroupNameInput(val);
+    try {
+      localStorage.setItem(STORAGE_KEYS.DRAFT_GROUP_NAME, val);
+    } catch (e) { /* ignore */ }
+  };
+
+  const handleSetGroupContactsInput = (val: string) => {
+    setGroupContactsInput(val);
+    try {
+      localStorage.setItem(STORAGE_KEYS.DRAFT_GROUP_CONTACTS, val);
+    } catch (e) { /* ignore */ }
+  };
+
+  const handleSetSelectedGroupId = (val: string) => {
+    setSelectedGroupId(val);
+    try {
+      localStorage.setItem(STORAGE_KEYS.SELECTED_GROUP_ID, val);
+    } catch (e) { /* ignore */ }
+  };
+
+  const handleSetDispatchMessageText = (val: string) => {
+    setDispatchMessageText(val);
+    try {
+      localStorage.setItem(STORAGE_KEYS.MESSAGE_TEXT, val);
     } catch (e) { /* ignore */ }
   };
 
@@ -75,15 +120,37 @@ export function useCampaignStore() {
       const rawList = await fetchInstances();
       const filtered = getFilteredInstancesForUser(rawList);
       setInstances(filtered);
-      if (filtered.length > 0) {
+
+      const savedInst = localStorage.getItem(STORAGE_KEYS.SELECTED_INSTANCE);
+      if (savedInst) {
+        setSelectedInstance(savedInst);
+        if (savedInst === "aoc") {
+          setSpeedMode("Turbo");
+          try {
+            localStorage.setItem(STORAGE_KEYS.SPEED_MODE, "Turbo");
+          } catch (e) {}
+        }
+      } else if (filtered.length > 0) {
         const active = filtered.find((i) => i.status === "open") || filtered[0];
         setSelectedInstance(active.instanceName);
+        try {
+          localStorage.setItem(STORAGE_KEYS.SELECTED_INSTANCE, active.instanceName);
+        } catch (e) {}
       }
     }
     loadInstancesData();
 
     const savedMsgText = localStorage.getItem(STORAGE_KEYS.MESSAGE_TEXT);
     if (savedMsgText) setDispatchMessageText(savedMsgText);
+
+    const savedDraftName = localStorage.getItem(STORAGE_KEYS.DRAFT_GROUP_NAME);
+    if (savedDraftName) setGroupNameInput(savedDraftName);
+
+    const savedDraftContacts = localStorage.getItem(STORAGE_KEYS.DRAFT_GROUP_CONTACTS);
+    if (savedDraftContacts) setGroupContactsInput(savedDraftContacts);
+
+    const savedSelectedGroupId = localStorage.getItem(STORAGE_KEYS.SELECTED_GROUP_ID);
+    if (savedSelectedGroupId) setSelectedGroupId(savedSelectedGroupId);
 
     const savedLogs = localStorage.getItem(STORAGE_KEYS.CAMPAIGN_LOGS);
     if (savedLogs) {
@@ -122,9 +189,19 @@ export function useCampaignStore() {
       } catch (e) { /* ignore corrupt data */ }
     }
 
-    const savedSpeed = localStorage.getItem(STORAGE_KEYS.SPEED_MODE);
-    if (savedSpeed === "Slow" || savedSpeed === "Normal" || savedSpeed === "Turbo") {
-      setSpeedMode(savedSpeed as SpeedMode);
+    const savedInstCheck = localStorage.getItem(STORAGE_KEYS.SELECTED_INSTANCE);
+    if (savedInstCheck === "aoc") {
+      setSpeedMode("Turbo");
+    } else {
+      const savedSpeed = localStorage.getItem(STORAGE_KEYS.SPEED_MODE);
+      if (savedSpeed === "Turbo") {
+        setSpeedMode("Turbo");
+      } else {
+        setSpeedMode("Slow");
+        try {
+          localStorage.setItem(STORAGE_KEYS.SPEED_MODE, "Slow");
+        } catch (e) {}
+      }
     }
   }, []);
 
@@ -511,12 +588,19 @@ export function useCampaignStore() {
 
       const cleanPhone = formatPhoneNumber(phone);
 
-      const personalizedText = dispatchMessageText
+      // 1. Personalization variables
+      let rawText = dispatchMessageText
         .replace(/\{\{name\}\}/gi, name)
         .replace(/\{\{phone\}\}/gi, cleanPhone)
         .replace(/\{\{group\}\}/gi, "Chit Scheme A")
         .replace(/\{\{amount\}\}/gi, "5,000")
         .replace(/\{\{due\}\}/gi, "0");
+
+      // 2. Spin-Text Multi-Variant Parsing (e.g. "{Namaste|Hello|Hi} {{name}} ji")
+      const personalizedText = rawText.replace(/\{([^{}]+)\}/g, (_, choices) => {
+        const options = choices.split("|");
+        return options[Math.floor(Math.random() * options.length)].trim();
+      });
 
       try {
         const res = await fetch("/api/evolution/send-message", {
@@ -561,7 +645,22 @@ export function useCampaignStore() {
       }
 
       if (i < lines.length - 1) {
-        await new Promise((res) => setTimeout(res, delayMs));
+        const isAocGateway = selectedInstance === "aoc" || selectedInstance === "AOC Portal API";
+
+        if (isAocGateway) {
+          // AOC Official API: Fast 600ms dispatch (No ban risk on official API)
+          await new Promise((res) => setTimeout(res, 600));
+        } else {
+          // Local Baileys Account: Anti-Ban Protection (Jitter delay + 25-msg batch rest break)
+          const jitter = Math.floor(Math.random() * 4000) + 1000;
+          const totalDelay = delayMs + jitter;
+
+          if (i > 0 && (i + 1) % 25 === 0) {
+            await new Promise((res) => setTimeout(res, 30000));
+          } else {
+            await new Promise((res) => setTimeout(res, totalDelay));
+          }
+        }
       }
     }
 
@@ -639,13 +738,13 @@ export function useCampaignStore() {
     // Tab
     activeTab, handleTabChange,
     // Instances
-    instances, selectedInstance, setSelectedInstance,
+    instances, selectedInstance, setSelectedInstance: handleSetSelectedInstance,
     isDeviceOnline, deviceOwnerNumber, deviceProfileName,
     // Tab 1
     speedMode, setSpeedMode: handleSetSpeedMode, handleSaveTemplateChanges,
     // Tab 2
-    groupNameInput, setGroupNameInput,
-    groupContactsInput, setGroupContactsInput,
+    groupNameInput, setGroupNameInput: handleSetGroupNameInput,
+    groupContactsInput, setGroupContactsInput: handleSetGroupContactsInput,
     savedGroupsList, groupSearchQuery, setGroupSearchQuery,
     nativeGroups, loadingNativeGroups,
     handleSaveBroadcastGroup, handleFetchNativeGroups,
@@ -653,10 +752,10 @@ export function useCampaignStore() {
     handleExportGroup, handleDeleteSavedGroup, handleLoadGroupToForm,
     showAlert,
     // Tab 3
-    selectedGroupId, setSelectedGroupId,
+    selectedGroupId, setSelectedGroupId: handleSetSelectedGroupId,
     deliveryMode, setDeliveryMode,
     scheduleTime, setScheduleTime,
-    dispatchMessageText, setDispatchMessageText,
+    dispatchMessageText, setDispatchMessageText: handleSetDispatchMessageText,
     dispatchMediaUrl, setDispatchMediaUrl,
     campaignLogs, scheduledCampaigns,
     selectedLogDetail, setSelectedLogDetail,

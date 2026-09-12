@@ -14,6 +14,39 @@ export async function POST(req: Request) {
     // Format phone number (strip non-digits)
     const cleanNumber = number.replace(/\D/g, '');
 
+    // If AOC Portal API is selected as gateway or instanceName is 'aoc'
+    if (instanceName === 'aoc' || instanceName === 'AOC Portal API') {
+      const aocApiKey = process.env.AOC_API_KEY || "FaD5mRscjpM57s9WZWZVWUBGAvHaA8nv";
+      const aocSenderNumber = process.env.AOC_SENDER_NUMBER || "919642218004";
+      const aocBaseUrl = (process.env.AOC_BASE_URL || "https://api.aoc-portal.com").replace(/\/+$/, "");
+
+      let cleanPhone = cleanNumber;
+      if (cleanPhone.length === 10) cleanPhone = "91" + cleanPhone;
+
+      const aocRes = await fetch(`${aocBaseUrl}/v1/messages`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": aocApiKey,
+        },
+        body: JSON.stringify({
+          recipient_type: "individual",
+          from: aocSenderNumber,
+          to: cleanPhone,
+          type: "text",
+          text: { body: text || "" },
+        }),
+      });
+
+      if (!aocRes.ok) {
+        const errText = await aocRes.text();
+        return NextResponse.json({ error: errText, status: "FAILED" }, { status: aocRes.status });
+      }
+
+      const aocData = await aocRes.json();
+      return NextResponse.json({ status: "SENT", gateway: "AOC_PORTAL_API", data: aocData });
+    }
+
     const endpoint = mediaUrl
       ? `${EVOLUTION_API_URL}/message/sendMedia/${instanceName}`
       : `${EVOLUTION_API_URL}/message/sendText/${instanceName}`;

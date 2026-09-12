@@ -5,7 +5,7 @@
 - **Server Public IP:** `129.225.118.77`
 - **Operating System:** Ubuntu 22.04 LTS
 - **Region:** India South (Hyderabad) — `ap-hyderabad-1`
-- **SSH Private Key Path:** `C:\Project\orlife-connect\oracle-ssh-key.key`
+- **SSH Private Key Path:** `C:\Project\orlife-engine\oracle-ssh-key.key`
 - **GitHub Repository:** `https://github.com/techorlifeindia-prog/orlife-engine`
 
 ---

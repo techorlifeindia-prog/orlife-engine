@@ -64,6 +64,9 @@ function WhatsAppCenterContent() {
             deviceProfileName={store.deviceProfileName}
             deviceOwnerNumber={store.deviceOwnerNumber}
             isDeviceOnline={store.isDeviceOnline}
+            instances={store.instances}
+            selectedInstance={store.selectedInstance}
+            onSelectInstance={store.setSelectedInstance}
           />
         )}
 

@@ -470,6 +470,15 @@ app.post('/message/sendText/:instanceName', async (req, res) => {
     }
 
     console.log(`[WhatsApp Engine] Sending Text to JID: ${jid} (source: ${source}, Rate: ${rateLimitCheck.currentRate}/${rateLimitCheck.maxRate})`);
+    
+    // Simulate human typing indicator before dispatch (Anti-Ban Protection)
+    if (sessionObj.socket?.sendPresenceUpdate && !isOtp) {
+      try {
+        await sessionObj.socket.sendPresenceUpdate('composing', jid);
+        await new Promise(r => setTimeout(r, 1200));
+      } catch (e) {}
+    }
+
     const sentMsg = await sessionObj.socket.sendMessage(jid, { text: msgContent });
     if (sentMsg?.key?.id && sentMsg?.message) {
       cacheSentMessage(sentMsg.key.id, sentMsg.message);

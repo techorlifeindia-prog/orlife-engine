@@ -154,7 +154,7 @@ OrLife Connect is a high-performance, enterprise-grade WhatsApp Multi-Account Ma
 - [x] **Oracle Region:** `ap-hyderabad-1` (Home region — India South Hyderabad)
 - [x] **Oracle VM Instance Created:** `orlife-engine` — Ubuntu 22.04 — **RUNNING** 🟢
 - [x] **Public IP Assigned:** `129.225.118.77`
-- [x] **Swap Memory Configured:** 2 GB Swap file added (3 GB total usable memory)
+- [x] **Swap Memory Configured:** 6 GB Swap memory active (7 GB total usable memory) 🟢
 - [x] **Firewall Ingress Rules:** Ports 22, 80 (HTTP), 443 (HTTPS) opened in Security List
 - [x] **Software Installed:** Node.js 20.x, PM2, Nginx, Certbot
 - [x] **GitHub Repo Synced:** `techorlifeindia-prog/orlife-engine` cloned to `/app`
