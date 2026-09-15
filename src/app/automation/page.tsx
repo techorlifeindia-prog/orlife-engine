@@ -885,10 +885,11 @@ export default function AutomationRulesPage() {
         ) : (
           /* TAB 5: API & WEBHOOK */
           <div className="space-y-5 animate-in fade-in duration-150">
+
             {/* WEBHOOK URL */}
             <div className="p-4 rounded-2xl border border-slate-200 dark:border-[#163546] bg-slate-50 dark:bg-[#06141c] space-y-2">
               <label className="text-xs font-extrabold uppercase tracking-wider text-blue-500 flex items-center gap-1.5">
-                <Globe className="w-4 h-4 text-blue-500" /> Third-Party API Webhook Relay URL
+                <Globe className="w-4 h-4 text-blue-500" /> Client CRM Forwarding Webhook
               </label>
               <input
                 type="url"
@@ -898,158 +899,156 @@ export default function AutomationRulesPage() {
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-[#163546] bg-white dark:bg-[#091822] text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
               />
               <p className="text-[10px] text-slate-400">
-                Used in Mode 2 & Mode 3. Incoming WhatsApp messages will be forwarded via HTTP POST with event ID & retry handling.
+                Incoming WhatsApp messages will be forwarded via HTTP POST to this URL in real-time.
               </p>
             </div>
 
             {/* API KEY */}
             <div className="p-4 rounded-2xl border border-slate-200 dark:border-[#163546] bg-slate-50 dark:bg-[#06141c] space-y-2">
               <label className="text-xs font-extrabold uppercase tracking-wider text-blue-500 flex items-center gap-1.5">
-                <Key className="w-4 h-4 text-blue-500" /> API Secret Key
+                <Key className="w-4 h-4 text-blue-500" /> Tenant API Key
               </label>
               <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  readOnly
-                  value={apiKey}
+                <input type="text" readOnly value={apiKey}
                   className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-[#163546] bg-white dark:bg-[#091822] text-xs font-mono font-bold text-emerald-500 select-all"
                 />
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(apiKey);
-                    setCopiedKey(true);
-                    setTimeout(() => setCopiedKey(false), 2000);
-                  }}
-                  className="px-3 py-2.5 rounded-xl bg-blue-500/15 text-blue-400 border border-blue-500/30 text-xs font-bold flex items-center gap-1 hover:bg-blue-500/25 transition-colors cursor-pointer"
-                >
+                <button onClick={() => { navigator.clipboard.writeText(apiKey); setCopiedKey(true); setTimeout(() => setCopiedKey(false), 2000); }}
+                  className="px-3 py-2.5 rounded-xl bg-blue-500/15 text-blue-400 border border-blue-500/30 text-xs font-bold flex items-center gap-1 hover:bg-blue-500/25 transition-colors cursor-pointer">
                   {copiedKey ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
                   {copiedKey ? "Copied!" : "Copy Key"}
                 </button>
               </div>
             </div>
 
-            <div className="flex justify-end pt-1">
-              <button
-                onClick={handleSavePrompt}
-                className="px-6 py-2.5 bg-blue-500 hover:bg-blue-400 text-white font-extrabold text-xs rounded-xl shadow-md shadow-blue-500/20 flex items-center justify-center gap-2 active:scale-95 cursor-pointer transition-all"
-              >
+            <div className="flex justify-end">
+              <button onClick={handleSavePrompt}
+                className="px-6 py-2.5 bg-blue-500 hover:bg-blue-400 text-white font-extrabold text-xs rounded-xl shadow-md shadow-blue-500/20 flex items-center justify-center gap-2 active:scale-95 cursor-pointer transition-all">
                 <Save className="w-4 h-4" /> Save Webhook & API
               </button>
             </div>
 
-            {/* THIRD-PARTY API CODE SNIPPETS & INTEGRATION GUIDE */}
+            {/* CLIENT API ENDPOINTS — 3 cards */}
             <div className="p-5 rounded-2xl border border-blue-500/30 bg-blue-500/5 space-y-4">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <div>
-                  <h4 className="text-xs font-extrabold text-blue-400 uppercase tracking-wider flex items-center gap-2">
-                    <Code2 className="w-4 h-4" /> Third-Party Integration Code Snippets
-                  </h4>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
-                    Use these ready-to-copy code snippets to send WhatsApp messages from any external CRM, ERP, or website using your API Secret Key.
-                  </p>
-                </div>
-
-                {/* Language Switcher Tabs */}
-                <div className="flex items-center gap-1 bg-slate-900/80 p-1 rounded-xl border border-blue-500/30">
-                  {(["curl", "nodejs", "python"] as const).map((lang) => (
-                    <button
-                      key={lang}
-                      onClick={() => setSelectedCodeLang(lang)}
-                      className={`px-3 py-1 rounded-lg text-xs font-bold font-mono transition-all cursor-pointer ${
-                        selectedCodeLang === lang
-                          ? "bg-blue-500 text-white shadow-sm"
-                          : "text-slate-400 hover:text-slate-200"
-                      }`}
-                    >
-                      {lang === "curl" ? "cURL" : lang === "nodejs" ? "Node.js / JS" : "Python"}
-                    </button>
-                  ))}
-                </div>
+              <div>
+                <h4 className="text-xs font-extrabold text-blue-400 uppercase tracking-wider flex items-center gap-2">
+                  <Code2 className="w-4 h-4" /> Client API Endpoints
+                </h4>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  अपने CRM या Website में इन 3 endpoints को use करें। हर request में <code className="bg-slate-800 px-1 rounded text-emerald-400">Authorization: Bearer {apiKey}</code> header भेजें।
+                </p>
               </div>
 
-              {/* Code Snippet Box */}
-              <div className="relative group">
-                <pre className="p-4 rounded-xl border border-slate-200 dark:border-[#163546] bg-slate-950 text-emerald-400 text-[11px] font-mono leading-relaxed overflow-x-auto select-all">
-                  {selectedCodeLang === "curl" && `curl -X POST http://localhost:8080/message/send-text \\
+              {/* 3 Endpoint Cards */}
+              {[
+                {
+                  icon: "🤖", title: "AI Chat Only", color: "emerald",
+                  method: "POST", path: "/api/client/v1/ai/chat",
+                  body: `{ "message": "Price kya hai?" }`,
+                  desc: "AI से reply लो — WhatsApp नहीं जाएगा",
+                },
+                {
+                  icon: "📱", title: "WhatsApp Send Only", color: "green",
+                  method: "POST", path: "/api/client/v1/whatsapp/send",
+                  body: `{ "phone": "919876543210", "message": "Hello!", "instanceName": "${tenantId}" }`,
+                  desc: "WhatsApp पर directly message भेजो",
+                },
+                {
+                  icon: "⚡", title: "AI → WhatsApp (Combined)", color: "purple",
+                  method: "POST", path: "/api/client/v1/ai-whatsapp/send",
+                  body: `{ "phone": "919876543210", "userMessage": "Price batao?", "instanceName": "${tenantId}" }`,
+                  desc: "AI reply generate होगा और automatically WhatsApp पर भेजेगा",
+                },
+              ].map(({ icon, title, color, method, path, body, desc }) => (
+                <div key={path} className={`p-4 rounded-xl border border-${color}-500/30 bg-${color}-500/5 space-y-2`}>
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <span className={`text-xs font-extrabold text-${color}-400 flex items-center gap-1.5`}>
+                      {icon} {title}
+                    </span>
+                    <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full bg-${color}-500/10 text-${color}-400 border border-${color}-500/30`}>
+                      {method}
+                    </span>
+                  </div>
+                  <code className="block text-[11px] font-mono text-slate-300 bg-slate-900 px-3 py-2 rounded-lg">{path}</code>
+                  <pre className="text-[10px] font-mono text-slate-400 bg-slate-900/50 p-2 rounded-lg overflow-x-auto">{body}</pre>
+                  <p className="text-[10px] text-slate-400">{desc}</p>
+                </div>
+              ))}
+
+              {/* Language Switcher + Code Snippet */}
+              <div className="pt-2 border-t border-blue-500/20 space-y-3">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <h5 className="text-[11px] font-extrabold text-slate-300">Ready-to-use Code</h5>
+                  <div className="flex items-center gap-1 bg-slate-900/80 p-1 rounded-xl border border-blue-500/30">
+                    {(["curl", "nodejs", "python"] as const).map((lang) => (
+                      <button key={lang} onClick={() => setSelectedCodeLang(lang)}
+                        className={`px-3 py-1 rounded-lg text-xs font-bold font-mono transition-all cursor-pointer ${selectedCodeLang === lang ? "bg-blue-500 text-white" : "text-slate-400 hover:text-slate-200"}`}>
+                        {lang === "curl" ? "cURL" : lang === "nodejs" ? "Node.js" : "Python"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="relative">
+                  <pre className="p-4 rounded-xl border border-slate-200 dark:border-[#163546] bg-slate-950 text-emerald-400 text-[11px] font-mono leading-relaxed overflow-x-auto select-all">
+                    {selectedCodeLang === "curl" && `curl -X POST https://your-server.com/api/client/v1/ai-whatsapp/send \\
   -H "Content-Type: application/json" \\
-  -H "x-api-key: ${apiKey}" \\
+  -H "Authorization: Bearer ${apiKey}" \\
   -d '{
-    "instanceName": "${tenantId}",
-    "number": "918002821800",
-    "message": "Hello from Third-Party System!"
+    "phone": "919876543210",
+    "userMessage": "Price kya hai?",
+    "instanceName": "${tenantId}"
   }'`}
-                  {selectedCodeLang === "nodejs" && `// Third-Party Node.js / JavaScript WhatsApp Send Integration
-const response = await fetch("http://localhost:8080/message/send-text", {
+                    {selectedCodeLang === "nodejs" && `const res = await fetch("https://your-server.com/api/client/v1/ai-whatsapp/send", {
   method: "POST",
   headers: {
     "Content-Type": "application/json",
-    "x-api-key": "${apiKey}"
+    "Authorization": "Bearer ${apiKey}"
   },
   body: JSON.stringify({
-    instanceName: "${tenantId}",
-    number: "918002821800",
-    message: "Hello from Third-Party System!"
+    phone: "919876543210",
+    userMessage: "Price kya hai?",
+    instanceName: "${tenantId}"
   })
 });
+const data = await res.json();
+console.log(data); // { status: "SENT", aiReply: "..." }`}
+                    {selectedCodeLang === "python" && `import requests
 
-const result = await response.json();
-console.log("Send Result:", result);`}
-                  {selectedCodeLang === "python" && `# Third-Party Python WhatsApp Send Integration
-import requests
-
-url = "http://localhost:8080/message/send-text"
-headers = {
+res = requests.post("https://your-server.com/api/client/v1/ai-whatsapp/send",
+  headers={
     "Content-Type": "application/json",
-    "x-api-key": "${apiKey}"
-}
-payload = {
-    "instanceName": "${tenantId}",
-    "number": "918002821800",
-    "message": "Hello from Third-Party System!"
-}
-
-response = requests.post(url, json=payload, headers=headers)
-print("Response:", response.json())`}
-                </pre>
-                <button
-                  onClick={() => {
-                    const textToCopy =
-                      selectedCodeLang === "curl"
-                        ? `curl -X POST http://localhost:8080/message/send-text \\\n  -H "Content-Type: application/json" \\\n  -H "x-api-key: ${apiKey}" \\\n  -d '{\n    "instanceName": "${tenantId}",\n    "number": "918002821800",\n    "message": "Hello from Third-Party System!"\n  }'`
+    "Authorization": "Bearer ${apiKey}"
+  },
+  json={
+    "phone": "919876543210",
+    "userMessage": "Price kya hai?",
+    "instanceName": "${tenantId}"
+  }
+)
+print(res.json())  # {"status": "SENT", "aiReply": "..."}`}
+                  </pre>
+                  <button
+                    onClick={() => {
+                      const code = selectedCodeLang === "curl"
+                        ? `curl -X POST https://your-server.com/api/client/v1/ai-whatsapp/send \\\n  -H "Content-Type: application/json" \\\n  -H "Authorization: Bearer ${apiKey}" \\\n  -d '{"phone":"919876543210","userMessage":"Price kya hai?","instanceName":"${tenantId}"}'`
                         : selectedCodeLang === "nodejs"
-                        ? `const response = await fetch("http://localhost:8080/message/send-text", {\n  method: "POST",\n  headers: {\n    "Content-Type": "application/json",\n    "x-api-key": "${apiKey}"\n  },\n  body: JSON.stringify({\n    instanceName: "${tenantId}",\n    number: "918002821800",\n    message: "Hello from Third-Party System!"\n  })\n});\nconst result = await response.json();\nconsole.log(result);`
-                        : `import requests\nurl = "http://localhost:8080/message/send-text"\nheaders = {"Content-Type": "application/json", "x-api-key": "${apiKey}"}\npayload = {"instanceName": "${tenantId}", "number": "918002821800", "message": "Hello from Third-Party System!"}\nresponse = requests.post(url, json=payload, headers=headers)\nprint(response.json())`;
-                    navigator.clipboard.writeText(textToCopy);
-                    setCopiedSnippet(true);
-                    setTimeout(() => setCopiedSnippet(false), 2000);
-                  }}
-                  className="absolute right-3 top-3 px-2.5 py-1.5 rounded-lg bg-blue-500/20 text-blue-300 border border-blue-500/40 text-[10px] font-bold flex items-center gap-1 hover:bg-blue-500/30 transition-all cursor-pointer"
-                >
-                  {copiedSnippet ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                  {copiedSnippet ? "Copied!" : "Copy Code"}
-                </button>
-              </div>
-
-              {/* Webhook Payload JSON Format */}
-              <div className="pt-2 border-t border-blue-500/20 space-y-2">
-                <h5 className="text-[11px] font-extrabold text-slate-300 flex items-center gap-1.5">
-                  <Globe className="w-3.5 h-3.5 text-blue-400" /> Incoming Message Webhook JSON Schema (Sent to your Webhook Relay URL)
-                </h5>
-                <pre className="p-3 rounded-xl border border-slate-200 dark:border-[#163546] bg-slate-900 text-slate-300 text-[10px] font-mono leading-relaxed overflow-x-auto">
-{`{
-  "event": "messages.upsert",
-  "instanceName": "${tenantId}",
-  "from": "918002821800@s.whatsapp.net",
-  "senderName": "Customer Name",
-  "messageText": "Hi, I want details about Chit Fund software",
-  "timestamp": 1725800000
-}`}
-                </pre>
+                        ? `const res = await fetch("https://your-server.com/api/client/v1/ai-whatsapp/send", {method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer ${apiKey}"},body:JSON.stringify({phone:"919876543210",userMessage:"Price kya hai?",instanceName:"${tenantId}"})});`
+                        : `import requests\nres = requests.post("https://your-server.com/api/client/v1/ai-whatsapp/send",headers={"Authorization":"Bearer ${apiKey}"},json={"phone":"919876543210","userMessage":"Price kya hai?","instanceName":"${tenantId}"})\nprint(res.json())`;
+                      navigator.clipboard.writeText(code);
+                      setCopiedSnippet(true);
+                      setTimeout(() => setCopiedSnippet(false), 2000);
+                    }}
+                    className="absolute right-3 top-3 px-2.5 py-1.5 rounded-lg bg-blue-500/20 text-blue-300 border border-blue-500/40 text-[10px] font-bold flex items-center gap-1 hover:bg-blue-500/30 cursor-pointer">
+                    {copiedSnippet ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                    {copiedSnippet ? "Copied!" : "Copy Code"}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         )}
       </div>
+
 
       {/* ── Add/Edit Rule Modal ──────────────────────────── */}
       {isModalOpen && (

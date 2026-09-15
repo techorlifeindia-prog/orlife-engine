@@ -2,6 +2,11 @@
 
 **Vision:** High-performance, secure, scalable, and modular AI Hub + WhatsApp + Website that is production-ready.
 
+**CRITICAL GOLDEN RULE: Zero Duplicate Code (DRY Enforcement)**
+Before writing ANY logic, you MUST check if a similar utility, hook, or helper already exists. Repeated patterns MUST be extracted. 
+- If the same block of code (like `fetch` API, state setup, or UI component) appears in 2+ places, you MUST extract it into a helper function before committing. NEVER inline multiple times.
+- This is the absolute highest priority rule. AI agents failing to follow this will be reset.
+
 - **Rule 1:** Performance First – Lightweight code, no unnecessary libraries, low response time, memory efficient.
 - **Rule 2:** Tech Stack is Fixed: Frontend uses Next.js (App Router), TypeScript, Tailwind CSS, Zustand, TanStack Query, Lucide. Backend uses Node.js + Fastify + TypeScript. DB is PostgreSQL; Cache is Redis. WhatsApp Engine: Baileys. Deployment: Nginx, PM2 (Docker optional).
 - **Rule 3:** Clean Architecture – Modular and reusable, strictly no duplicate code.
@@ -21,12 +26,6 @@
 - **Rule 17:** Performance Optimization – Implement pagination, caching, debouncing, and lazy loading where applicable.
 - **Rule 18:** Error Handling – User-friendly error messages on the frontend, detailed technical logs on the backend.
 - **Rule 19:** Final Checklist – Build passes, no type/runtime errors, documentation is updated, code is production-ready.
-- **Rule 20:** Zero Duplicate Code (DRY Enforcement) – Before writing any logic, check if a similar utility, hook, or helper already exists. Repeated patterns MUST be extracted:
-  - Repeated `localStorage` access → shared helper (e.g. `lsGet`, `lsSet`)
-  - Repeated `useState` + `useEffect` session sync → shared hook (e.g. `useSessionInfo`)
-  - Repeated string/number transforms → pure utility function (e.g. `digitsOnly`)
-  - Repeated business logic (e.g. admin detection) → single private function, never inline multiple times
-  - If the same block appears in 2+ places, it must be extracted BEFORE committing.
 
 **Golden Rule:** Correctness, Security, Performance, Stability, Clean Code – strictly in this exact priority order.
 

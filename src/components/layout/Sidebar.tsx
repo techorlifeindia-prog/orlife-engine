@@ -25,13 +25,18 @@ export function Sidebar() {
   const { isMobileSidebarOpen, closeMobileSidebar } = useUIStore();
   const [mounted, setMounted] = useState(false);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [isClientView, setIsClientView] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    setIsSuperAdmin(getInitialSessionInfo().isSuperAdmin);
+    const info = getInitialSessionInfo();
+    setIsSuperAdmin(info.isSuperAdmin);
+    setIsClientView(info.isClientView);
 
     const checkRole = () => {
-      setIsSuperAdmin(getInitialSessionInfo().isSuperAdmin);
+      const info = getInitialSessionInfo();
+      setIsSuperAdmin(info.isSuperAdmin);
+      setIsClientView(info.isClientView);
     };
 
     window.addEventListener("storage", checkRole);
@@ -119,18 +124,20 @@ export function Sidebar() {
 
         {/* Settings Footer */}
         <div className="mt-auto pt-4 border-t border-slate-200 dark:border-[#163546]">
-          <Link
-            href="/settings"
-            onClick={closeMobileSidebar}
-            className={`flex items-center gap-3.5 px-3.5 py-3 rounded-xl text-sm font-semibold transition-all ${
-              pathname === "/settings"
-                ? "bg-[#10b981]/15 text-[#10b981] border border-[#10b981]/40 shadow-[0_0_15px_rgba(16,185,129,0.2)]"
-                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/50 border border-transparent"
-            }`}
-          >
-            <Settings className={`w-4 h-4 ${pathname === "/settings" ? "text-[#10b981]" : "text-slate-500 dark:text-slate-400"}`} />
-            Settings
-          </Link>
+          {!isClientView && (
+            <Link
+              href="/settings"
+              onClick={closeMobileSidebar}
+              className={`flex items-center gap-3.5 px-3.5 py-3 rounded-xl text-sm font-semibold transition-all ${
+                pathname === "/settings"
+                  ? "bg-[#10b981]/15 text-[#10b981] border border-[#10b981]/40 shadow-[0_0_15px_rgba(16,185,129,0.2)]"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/50 border border-transparent"
+              }`}
+            >
+              <Settings className={`w-4 h-4 ${pathname === "/settings" ? "text-[#10b981]" : "text-slate-500 dark:text-slate-400"}`} />
+              Settings
+            </Link>
+          )}
         </div>
       </aside>
     </>

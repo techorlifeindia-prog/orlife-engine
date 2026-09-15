@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Header } from "@/components/layout/Header";
-import { getInitialSessionInfo, generateProfessionalApiToken, getUserSpecificApiToken } from "@/lib/user-session-utils";
+import { getInitialSessionInfo, generateProfessionalApiToken, getUserSpecificApiToken, lsGet, lsSet } from "@/lib/user-session-utils";
 import {
   Webhook, ShieldCheck, Globe, Key, Send, Eye, EyeOff,
   RefreshCw, CheckCircle2, AlertCircle, Sparkles, Copy,
@@ -19,6 +20,7 @@ const AI_ENDPOINTS = [
 type Section = "whatsapp" | "ai" | "system";
 
 export default function SettingsPage() {
+  const router = useRouter();
   const [openSection, setOpenSection] = useState<Section>("whatsapp");
   const [session, setSession] = useState(() => getInitialSessionInfo());
   const [apiToken, setApiToken] = useState(() => getUserSpecificApiToken());
@@ -31,11 +33,8 @@ export default function SettingsPage() {
 
     // Check query params for tab selection (e.g. /settings?tab=whatsapp)
     if (typeof window !== "undefined") {
-      const searchParams = new URLSearchParams(window.location.search);
-      const tabParam = searchParams.get("tab") as Section;
-      if (tabParam && ["whatsapp", "ai", "system"].includes(tabParam)) {
-        setOpenSection(tabParam);
-      }
+      const tab = (new URLSearchParams(window.location.search).get("tab") || lsGet<string>("orlife_settings_tab")) as Section;
+      if (tab && ["whatsapp", "ai", "system"].includes(tab)) setOpenSection(tab);
     }
 
     const syncSession = () => {
@@ -53,6 +52,9 @@ export default function SettingsPage() {
 
   const isClientView = session.isClientView;
 
+  // Client View redirect — settings page is Super Admin only
+  useEffect(() => { if (isClientView) router.replace("/"); }, [isClientView, router]);
+
   // WhatsApp
   const [gatewayUrl, setGatewayUrl] = useState("http://localhost:8080");
   const [sessionKey, setSessionKey]  = useState("OrLifeBot");
@@ -62,35 +64,34 @@ export default function SettingsPage() {
   const [testResult, setTestResult]  = useState<{ success: boolean; message: string; latencyMs?: number } | null>(null);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("orlife_whatsapp_api_config");
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          if (parsed.gatewayUrl) setGatewayUrl(parsed.gatewayUrl);
-          if (parsed.sessionKey) setSessionKey(parsed.sessionKey);
-          if (parsed.apiToken) setApiToken(parsed.apiToken);
-        } catch (e) {}
+    async function loadConfig() {
+      try {
+        const res = await fetch("/api/system/config");
+        if (res.ok) {
+          const config = await res.json();
+          // WhatsApp
+          if (config.whatsapp?.gatewayUrl) setGatewayUrl(config.whatsapp.gatewayUrl);
+          if (config.whatsapp?.sessionKey) setSessionKey(config.whatsapp.sessionKey);
+          if (config.whatsapp?.apiToken) setApiToken(config.whatsapp.apiToken);
+          // AI
+          if (config.ai?.aiBaseUrl) setAiBaseUrl(config.ai.aiBaseUrl);
+          if (config.ai?.aiModelName) setAiModelName(config.ai.aiModelName);
+          if (config.ai?.aiSecretKey) setAiSecretKey(config.ai.aiSecretKey);
+          // System
+          if (config.system?.webhookUrl) setWebhookUrl(config.system.webhookUrl);
+          if (config.system?.events) setEvents(config.system.events);
+        }
+      } catch (error) {
+        console.error("Failed to load system config:", error);
       }
     }
+    loadConfig();
   }, []);
-
 
   // AI Hub Config state
   const [aiBaseUrl, setAiBaseUrl] = useState("http://localhost:8090");
   const [aiModelName, setAiModelName] = useState("llama3.2");
-  const [aiSecretKey, setAiSecretKey] = useState(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("orlife_ai_hub_config");
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          if (parsed.aiSecretKey) return parsed.aiSecretKey;
-        } catch (e) {}
-      }
-    }
-    return "orl_sec_ai_9a8b7c6d5e4f3a2b1c0d9e8f";
-  });
+  const [aiSecretKey, setAiSecretKey] = useState("orl_sec_ai_master_key");
   const [showAiKey, setShowAiKey] = useState(false);
   const [isAiTesting, setIsAiTesting] = useState(false);
   const [aiTestResult, setAiTestResult] = useState<{ success: boolean; message: string; latencyMs?: number } | null>(null);
@@ -103,7 +104,6 @@ export default function SettingsPage() {
     setCopiedToken(id);
     setTimeout(() => setCopiedToken(null), 2000);
   };
-
 
   // Webhook + Anti-Ban
   const [webhookUrl, setWebhookUrl] = useState("http://localhost:7001/api/webhook/whatsapp");
@@ -131,10 +131,19 @@ export default function SettingsPage() {
     setIsAiTesting(false);
   };
 
-  const handleSaveAiConfig = () => {
-    localStorage.setItem("orlife_ai_hub_config", JSON.stringify({ aiBaseUrl, aiModelName, aiSecretKey, updatedAt: new Date().toISOString() }));
-    setIsAiSaved(true);
-    setTimeout(() => setIsAiSaved(false), 2000);
+  const saveConfig = async (payload: any) => {
+    try {
+      await fetch("/api/system/config", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      return true;
+    } catch (e) {
+      return false;
+    }
+  };
+
+  const handleSaveAiConfig = async () => {
+    if (await saveConfig({ ai: { aiBaseUrl, aiModelName, aiSecretKey } })) {
+      setIsAiSaved(true); setTimeout(() => setIsAiSaved(false), 2000);
+    }
   };
 
   const handleTest = async () => {
@@ -150,9 +159,10 @@ export default function SettingsPage() {
     setIsTesting(false);
   };
 
-  const handleSave = () => {
-    localStorage.setItem("orlife_whatsapp_api_config", JSON.stringify({ gatewayUrl, sessionKey, apiToken, updatedAt: new Date().toISOString() }));
-    setIsSaved(true); setTimeout(() => setIsSaved(false), 2000);
+  const handleSave = async () => {
+    if (await saveConfig({ whatsapp: { gatewayUrl, sessionKey, apiToken } })) {
+      setIsSaved(true); setTimeout(() => setIsSaved(false), 2000);
+    }
   };
 
   const handleCopy = (url: string) => {
@@ -200,7 +210,10 @@ export default function SettingsPage() {
           {TABS.map(tab => (
             <button
               key={tab.key}
-              onClick={() => setOpenSection(tab.key)}
+              onClick={() => {
+                setOpenSection(tab.key);
+                lsSet("orlife_settings_tab", tab.key);
+              }}
               className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all ${
                 openSection === tab.key
                   ? "bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20"
@@ -225,7 +238,7 @@ export default function SettingsPage() {
 
           {/* ── PANEL 1: WhatsApp Gateway ── */}
           {openSection === "whatsapp" && (
-            <div className="space-y-5">
+            <fieldset disabled={isClientView} className="space-y-5 border-none p-0 m-0">
               <div>
                 <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
                   <Server className="w-5 h-5 text-emerald-500" /> WhatsApp API Gateway
@@ -255,7 +268,7 @@ export default function SettingsPage() {
                 <div className="space-y-1.5 md:col-span-2">
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
-                      <Key className="w-3.5 h-3.5 text-emerald-500" /> Secret API Bearer Token
+                      <Key className="w-3.5 h-3.5 text-emerald-500" /> Gateway Master Bearer Token
                     </label>
                     <button
                       type="button"
@@ -314,12 +327,12 @@ export default function SettingsPage() {
                   {isSaved ? <><CheckCircle2 className="w-3.5 h-3.5" /> Saved!</> : "💾 Save Settings"}
                 </button>
               </div>
-            </div>
+            </fieldset>
           )}
 
           {/* ── PANEL 2: AI Hub Configuration & API Integration ── */}
           {openSection === "ai" && (
-            <div className="space-y-5">
+            <fieldset disabled={isClientView} className="space-y-5 border-none p-0 m-0">
               <div>
                 <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
                   <Sparkles className="w-5 h-5 text-emerald-500" /> OrLife Flash AI Hub Integration
@@ -353,7 +366,7 @@ export default function SettingsPage() {
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
-                      <Key className="w-3.5 h-3.5 text-emerald-500" /> API Secret Token
+                      <Key className="w-3.5 h-3.5 text-emerald-500" /> System AI Hub Key
                     </label>
                     <button
                       type="button"
@@ -439,12 +452,12 @@ export default function SettingsPage() {
                   </button>
                 </div>
               </div>
-            </div>
+            </fieldset>
           )}
 
           {/* ── PANEL 3: System Config ── */}
           {openSection === "system" && (
-            <div className="space-y-6">
+            <fieldset disabled={isClientView} className="space-y-6 border-none p-0 m-0">
               <div>
                 <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
                   <ShieldCheck className="w-5 h-5 text-green-500" /> System Configuration
@@ -457,8 +470,17 @@ export default function SettingsPage() {
                 <h4 className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
                   <Webhook className="w-3.5 h-3.5" /> Webhook Event Sync
                 </h4>
+                <div className="flex items-center gap-3 pt-1 mb-2">
+                  <button onClick={async () => {
+                    await saveConfig({ system: { webhookUrl, events } });
+                    alert("Webhook Config Saved!");
+                  }}
+                    className="flex-1 max-w-[200px] bg-emerald-500 hover:bg-emerald-400 text-slate-950 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-md shadow-emerald-500/20 active:scale-95">
+                    💾 Save Webhook Config
+                  </button>
+                </div>
                 <div>
-                  <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 block mb-1">Global Webhook Endpoint URL</label>
+                  <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 block mb-1">Global WhatsApp Event Webhook URL</label>
                   <input type="text" value={webhookUrl} onChange={e => setWebhookUrl(e.target.value)}
                     className="w-full bg-slate-50 dark:bg-[#06141c] border border-slate-200 dark:border-[#1b3a4e] rounded-xl px-3.5 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-900 dark:text-slate-100" />
                   <p className="text-[11px] text-slate-400 mt-1">All WhatsApp events will be forwarded here in real-time.</p>
@@ -498,7 +520,7 @@ export default function SettingsPage() {
                   </div>
                 </div>
               </div>
-            </div>
+            </fieldset>
           )}
 
         </div>

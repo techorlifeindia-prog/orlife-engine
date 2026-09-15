@@ -2,8 +2,21 @@ import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
 
-const AI_HUB_URL = "http://localhost:8090";
 const CONFIG_FILE_PATH = path.join(process.cwd(), "whatsapp-engine", "ai-config.json");
+const SYSTEM_CONFIG_PATH = path.join(process.cwd(), "whatsapp-engine", "system-config.json");
+
+function getAiHubUrl() {
+  try {
+    if (fs.existsSync(SYSTEM_CONFIG_PATH)) {
+      const raw = fs.readFileSync(SYSTEM_CONFIG_PATH, "utf8");
+      const parsed = JSON.parse(raw);
+      if (parsed.ai && parsed.ai.aiBaseUrl) return parsed.ai.aiBaseUrl;
+    }
+  } catch (e) {
+    console.error("[AI Hub Route] Failed to read system config:", e);
+  }
+  return "http://localhost:8090"; // Fallback
+}
 
 function readLocalConfigFile() {
   try {
@@ -31,7 +44,7 @@ export async function GET(request: Request) {
 
   // Try HTTP first
   try {
-    const fetchUrl = instanceName === "all" ? `${AI_HUB_URL}/config/all` : `${AI_HUB_URL}/config?instanceName=${encodeURIComponent(instanceName)}`;
+    const fetchUrl = instanceName === "all" ? `${getAiHubUrl()}/config/all` : `${getAiHubUrl()}/config?instanceName=${encodeURIComponent(instanceName)}`;
     const res = await fetch(fetchUrl, { signal: AbortSignal.timeout(2000) });
     if (res.ok) {
       const data = await res.json();
@@ -68,7 +81,7 @@ export async function POST(request: Request) {
 
     // Try HTTP first
     try {
-      const res = await fetch(`${AI_HUB_URL}/config`, {
+      const res = await fetch(`${getAiHubUrl()}/config`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),

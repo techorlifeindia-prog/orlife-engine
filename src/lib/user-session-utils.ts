@@ -15,7 +15,7 @@ interface RawUser {
 }
 
 /** Safe JSON parse from localStorage — returns null on any failure. */
-function lsGet<T>(key: string): T | null {
+export function lsGet<T>(key: string): T | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = localStorage.getItem(key);
@@ -26,7 +26,7 @@ function lsGet<T>(key: string): T | null {
 }
 
 /** Safe JSON set to localStorage — silently ignores errors. */
-function lsSet(key: string, value: unknown): void {
+export function lsSet(key: string, value: unknown): void {
   if (typeof window === "undefined") return;
   try {
     localStorage.setItem(key, JSON.stringify(value));
