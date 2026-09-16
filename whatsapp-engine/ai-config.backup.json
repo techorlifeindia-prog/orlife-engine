@@ -42,7 +42,8 @@
       "mode": "orlife_ai",
       "webhookUrl": "",
       "apiKey": "orlife_sec_0wycvgv7mtskd8wk",
-      "rateLimitPerMin": 30
+      "rateLimitPerMin": 30,
+      "tenantId": "tenant_default"
     },
     "918002821800": {
       "tenantId": "chamunda_industrie",
@@ -154,7 +155,7 @@
   },
   "aiEnabled": true,
   "ollamaEnabled": true,
-  "minDelaySec": 15,
+  "minDelaySec": 10,
   "maxDelaySec": 20,
   "minDelayMs": 10000,
   "maxDelayMs": 20000,
@@ -162,6 +163,36 @@
   "mode": "orlife_ai",
   "webhookUrl": "",
   "apiKey": "orlife_sec_0wycvgv7mtskd8wk",
-  "tenantId": "Chamunda Industries",
-  "rateLimitPerMin": 15
+  "tenantId": "tenant_default",
+  "rateLimitPerMin": 30,
+  "rules": [
+    {
+      "id": "r1",
+      "keyword": "HI",
+      "matchType": "Contains",
+      "replyText": "Namaste! Main Rani, OrLife se 😊. Kaise help karoon?",
+      "enabled": true
+    },
+    {
+      "id": "r2",
+      "keyword": "PRICE",
+      "matchType": "Contains",
+      "replyText": "Aapka mobile model number kya hai? Main price check karke batati hoon.",
+      "enabled": true
+    },
+    {
+      "id": "r3",
+      "keyword": "HELP",
+      "matchType": "Exact",
+      "replyText": "Ji Rani baat kar rahi hoon. Aap apna sawaal batayein!",
+      "enabled": true
+    },
+    {
+      "id": "r4",
+      "keyword": "HOURS",
+      "matchType": "Contains",
+      "replyText": "Office timing: Mon-Sat, 9 AM se 7 PM tak.",
+      "enabled": true
+    }
+  ]
 }
