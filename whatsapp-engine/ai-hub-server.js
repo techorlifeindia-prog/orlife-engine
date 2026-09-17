@@ -2,12 +2,13 @@ const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
 const app = express();
 const PORT = 8090;
 const WHATSAPP_ENGINE_URL = 'http://localhost:8080';
 const OLLAMA_URL = 'http://localhost:11434';
-const OLLAMA_MODEL = 'llama3.2';
+const OLLAMA_MODEL = 'llama3.2:1b';
 const AI_ENGINE_NAME = 'OrLife Flash AI (Self-Hosted VPS Engine)';
 
 // Storage for rules & config (synced with frontend localStorage via file)
@@ -231,29 +232,35 @@ function matchKeywordRule(messageText, rules) {
   return null;
 }
 
-/** Call OrLife Flash AI Engine (Ollama Local LLM) */
+/** Call OrLife Flash AI Engine (Groq Cloud API) */
 async function callOrLifeFlashAI(systemPrompt, userMessage) {
   try {
-    const res = await fetch(`${OLLAMA_URL}/api/generate`, {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.GROQ_API_KEY}`
+      },
       body: JSON.stringify({
-        model: OLLAMA_MODEL,
-        prompt: `System: ${systemPrompt}\n\nCustomer: ${userMessage}\n\nAssistant:`,
-        stream: false,
-        options: {
-          temperature: 0.2,
-          num_predict: 55,
-        }
+        model: 'llama3-8b-8192',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userMessage }
+        ],
+        temperature: 0.2,
+        max_tokens: 55,
       }),
-      signal: AbortSignal.timeout(120000), // Increased from 30s to 120s for cold model loading on VPS
+      signal: AbortSignal.timeout(10000), // Groq is extremely fast, 10s is plenty
     });
 
-    if (!res.ok) throw new Error(`Ollama HTTP ${res.status}`);
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`Groq HTTP ${res.status}: ${errText}`);
+    }
     const data = await res.json();
-    return data.response ? data.response.trim() : null;
+    return data.choices[0]?.message?.content?.trim() || null;
   } catch (e) {
-    console.error('[AI Hub] OrLife Flash AI call failed:', e.message);
+    console.error('[AI Hub] Groq Flash AI call failed:', e.message);
     return null;
   }
 }
