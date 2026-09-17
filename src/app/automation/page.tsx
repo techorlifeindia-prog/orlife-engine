@@ -333,7 +333,7 @@ export default function AutomationRulesPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: simMessage, systemPrompt }),
-        signal: AbortSignal.timeout(30000),
+        signal: AbortSignal.timeout(120000), // Increased from 30s to 120s for initial Ollama loading
       });
       if (res.ok) {
         const data = await res.json();

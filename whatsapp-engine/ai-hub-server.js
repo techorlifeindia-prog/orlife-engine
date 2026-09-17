@@ -246,7 +246,7 @@ async function callOrLifeFlashAI(systemPrompt, userMessage) {
           num_predict: 55,
         }
       }),
-      signal: AbortSignal.timeout(30000),
+      signal: AbortSignal.timeout(120000), // Increased from 30s to 120s for cold model loading on VPS
     });
 
     if (!res.ok) throw new Error(`Ollama HTTP ${res.status}`);
