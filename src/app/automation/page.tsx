@@ -116,7 +116,7 @@ export default function AutomationRulesPage() {
   const [mounted, setMounted] = useState(false);
 
   // Ollama status
-  const [ollamaStatus, setOllamaStatus] = useState<"checking" | "online" | "offline">("checking");
+  const [ollamaStatus, setOllamaStatus] = useState<"checking" | "online" | "partial" | "offline">("checking");
   const [ollamaModels, setOllamaModels] = useState<string[]>([]);
 
   // Engine Configuration States
@@ -224,6 +224,9 @@ export default function AutomationRulesPage() {
           setOllamaStatus("online");
           const modelsList = data.models?.map((m: any) => typeof m === "string" ? m : (m.name || String(m))) || [];
           setOllamaModels(modelsList.length ? modelsList : ["llama3.2"]);
+          return;
+        } else if (data.status === "PARTIAL" || data.hubStatus === "ONLINE") {
+          setOllamaStatus("partial");
           return;
         }
       }
@@ -415,13 +418,16 @@ export default function AutomationRulesPage() {
                 <p className="text-[11px] font-bold text-slate-400 mt-0.5 flex items-center gap-1"><RefreshCw className="w-3 h-3 animate-spin text-emerald-500" /> Checking...</p>
               )}
               {ollamaStatus === "online" && (
-                <p className="text-[11px] font-extrabold text-emerald-500 mt-0.5 flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> Online & Active 🟢</p>
+                <p className="text-[11px] font-extrabold text-emerald-500 mt-0.5 flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> Hub & Ollama Active 🟢</p>
+              )}
+              {ollamaStatus === "partial" && (
+                <p className="text-[11px] font-extrabold text-amber-500 mt-0.5 flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" /> Hub ON • Ollama OFF ⚠️</p>
               )}
               {ollamaStatus === "offline" && (
-                <p className="text-[11px] font-bold text-amber-500 mt-0.5 flex items-center gap-1"><WifiOff className="w-3 h-3" /> Standby Mode ⚠️</p>
+                <p className="text-[11px] font-bold text-rose-500 mt-0.5 flex items-center gap-1"><WifiOff className="w-3 h-3" /> All Systems Offline ❌</p>
               )}
             </div>
-            <div className={`p-2 rounded-xl border ${ollamaStatus === "online" ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/30" : "bg-amber-500/10 text-amber-500 border-amber-500/30"}`}>
+            <div className={`p-2 rounded-xl border ${ollamaStatus === "online" ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/30" : ollamaStatus === "partial" ? "bg-amber-500/10 text-amber-500 border-amber-500/30" : "bg-rose-500/10 text-rose-500 border-rose-500/30"}`}>
               {ollamaStatus === "online" ? <Wifi className="w-4 h-4" /> : <WifiOff className="w-4 h-4" />}
             </div>
           </div>
@@ -429,17 +435,16 @@ export default function AutomationRulesPage() {
           <div className="glass-card py-2.5 px-3.5 rounded-xl border border-slate-200 dark:border-[#163546] flex items-center justify-between">
             <div>
               <p className="text-[9px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">AI Auto-Reply Master</p>
-              <button
-                onClick={toggleAiEnabled}
-                className={`mt-0.5 text-[11px] font-black px-2.5 py-0.5 rounded-lg border flex items-center gap-1 transition-all cursor-pointer ${aiEnabled ? "bg-emerald-500/15 text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/25" : "bg-rose-500/15 text-rose-500 border-rose-500/30 hover:bg-rose-500/25"}`}
-              >
-                {aiEnabled ? <ToggleRight className="w-3.5 h-3.5" /> : <ToggleLeft className="w-3.5 h-3.5" />}
+              <p className={`text-[11px] font-bold mt-0.5 ${aiEnabled ? "text-emerald-500" : "text-rose-500"}`}>
                 {aiEnabled ? "ON (Active 24/7)" : "OFF (Paused)"}
-              </button>
+              </p>
             </div>
-            <div className={`p-2 rounded-xl border ${aiEnabled ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/30" : "bg-rose-500/10 text-rose-500 border-rose-500/30"}`}>
-              <Zap className="w-4 h-4" />
-            </div>
+            <button
+              onClick={toggleAiEnabled}
+              className={`p-1.5 rounded-xl border transition-all cursor-pointer ${aiEnabled ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/20" : "bg-rose-500/10 text-rose-500 border-rose-500/30 hover:bg-rose-500/20"}`}
+            >
+              {aiEnabled ? <ToggleRight className="w-5 h-5" /> : <ToggleLeft className="w-5 h-5" />}
+            </button>
           </div>
 
           <div className="glass-card py-2.5 px-3.5 rounded-xl border border-slate-200 dark:border-[#163546] flex items-center justify-between">
@@ -602,7 +607,7 @@ export default function AutomationRulesPage() {
                     <div className="flex items-center justify-between text-[11px]">
                       <span className="font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                         <CheckCircle2 className="w-3.5 h-3.5" />
-                        {simResult.source === "keyword_rule" ? `🏷️ Keyword: ${simResult.matchedKeyword}` : simResult.source === "ollama_ai" ? "🤖 Ollama AI Reply" : "⚡ Static Fallback"}
+                        {simResult.source === "keyword_rule" ? `🏷️ Keyword: ${simResult.matchedKeyword}` : (simResult.source === "ollama_ai" || simResult.source === "orlife_flash_ai") ? "🤖 Ollama AI Reply" : "⚡ Static Fallback"}
                       </span>
                       <span className="font-mono text-slate-400 text-[10px]">{simResult.matchType || simResult.source}</span>
                     </div>
@@ -614,7 +619,7 @@ export default function AutomationRulesPage() {
               </div>
 
               {/* Ollama Install Guide if offline */}
-              {ollamaStatus === "offline" && (
+              {(ollamaStatus === "offline" || ollamaStatus === "partial") && (
                 <div className="bg-amber-500/10 border border-amber-500/30 p-3 rounded-xl text-xs text-amber-600 dark:text-amber-400 space-y-1.5">
                   <p className="font-bold flex items-center gap-1"><WifiOff className="w-3.5 h-3.5" /> Ollama Offline</p>
                   <p className="text-[11px]">Keyword rules will work. For AI fallback:</p>

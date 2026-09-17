@@ -1,0 +1,21 @@
+{
+  "whatsapp": {
+    "gatewayUrl": "http://localhost:8080",
+    "sessionKey": "OrLifeBot",
+    "apiToken": "orl_sk_live_master"
+  },
+  "ai": {
+    "aiBaseUrl": "https://api.orlifeindia.com/ai-hub",
+    "aiModelName": "llama3.2",
+    "aiSecretKey": "orl_sec_ai_09tftoq3t44dv7mah7j2g98v"
+  },
+  "system": {
+    "webhookUrl": "http://localhost:7001/api/webhook/whatsapp",
+    "events": {
+      "MESSAGES_UPSERT": true,
+      "CONNECTION_UPDATE": true,
+      "QRCODE_UPDATED": true,
+      "SEND_MESSAGE": false
+    }
+  }
+}

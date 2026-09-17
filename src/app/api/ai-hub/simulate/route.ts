@@ -2,10 +2,13 @@ import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
   try {
-    const { prompt, persona, modelProvider } = await request.json();
+    const body = await request.json();
+    const prompt = body.prompt || body.message;
+    const persona = body.persona || body.systemPrompt;
+    const modelProvider = body.modelProvider;
 
     if (!prompt) {
-      return NextResponse.json({ error: "Prompt is required" }, { status: 400 });
+      return NextResponse.json({ error: "Prompt/Message is required" }, { status: 400 });
     }
 
     const cleanPrompt = prompt.toLowerCase();

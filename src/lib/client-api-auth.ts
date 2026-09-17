@@ -21,7 +21,7 @@ function getClientKeys(): string[] {
 export function validateClientApiKey(authHeader: string | null): string | null {
   if (!authHeader?.startsWith("Bearer ")) return "Missing Authorization header";
   const token = authHeader.slice(7).trim();
-  if (!token.startsWith("orl_client_")) return "Invalid API key prefix";
+  if (!token.startsWith("orlife_sec_")) return "Invalid API key prefix";
   const validKeys = getClientKeys();
   if (!validKeys.includes(token)) return "Unauthorized: API key not found";
   return null; // valid

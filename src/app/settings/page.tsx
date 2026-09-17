@@ -335,7 +335,7 @@ export default function SettingsPage() {
             <fieldset disabled={isClientView} className="space-y-5 border-none p-0 m-0">
               <div>
                 <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-emerald-500" /> OrLife Flash AI Hub Integration
+                  <Sparkles className="w-5 h-5 text-emerald-500" /> OrLife Flash AI Integration
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/30 ml-1">ACTIVE</span>
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">Configure your self-hosted Local Ollama AI or VPS production server.</p>
@@ -345,12 +345,12 @@ export default function SettingsPage() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-50 dark:bg-[#06141c] border border-slate-200 dark:border-[#1b3a4e] p-4 rounded-xl">
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
-                    <Globe className="w-3.5 h-3.5 text-emerald-500" /> Server Base URL
+                    <Globe className="w-3.5 h-3.5 text-emerald-500" /> API Base URL
                   </label>
                   <input type="text" value={aiBaseUrl} onChange={e => setAiBaseUrl(e.target.value)}
                     placeholder="http://localhost:8001"
                     className="w-full bg-white dark:bg-[#0b1d28] border border-slate-200 dark:border-[#1b3a4e] rounded-xl px-3 py-2 text-xs font-mono text-slate-900 dark:text-slate-100 focus:outline-none focus:border-emerald-500" />
-                  <span className="text-[10px] text-slate-400">Local (8090) or VPS IP/Domain</span>
+                  <span className="text-[10px] text-slate-400">Enter VPS AI Hub URL (e.g. https://api.orlifeindia.com/ai-hub)</span>
                 </div>
 
                 <div className="space-y-1.5">
@@ -366,7 +366,7 @@ export default function SettingsPage() {
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
-                      <Key className="w-3.5 h-3.5 text-emerald-500" /> System AI Hub Key
+                      <Key className="w-3.5 h-3.5 text-emerald-500" /> API Secret Token
                     </label>
                     <button
                       type="button"
