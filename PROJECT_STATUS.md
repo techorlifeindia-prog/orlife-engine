@@ -29,8 +29,7 @@ OrLife Connect is a high-performance, enterprise-grade WhatsApp Multi-Account Ma
 ---
 
 ## 🎉 PHASE 2: State Management & WhatsApp Session Engine (COMPLETED)
-- [x] **Evolution API Proxy Routes:** Secure Next.js Server API Routes (`/api/evolution/...`) for instance creation, status, and QR codes.
-- [x] **Interactive QR Code Generator:** Real-time QR Code modal component (`qr-modal.tsx`) with pairing codes and auto-refresh.
+- [x] **Oracle Cloud VM Auto-Deployment:** Built production Next.js app, pushed changes to master, pulled and restarted PM2 services (`ai-hub-server`, `whatsapp-engine`, `orlife-connect-ui`) on `129.225.118.77` (`https://api.orlifeindia.com`). Verified live `/api/ai-hub/simulate` returning fast Rani AI persona responses.
 - [x] **Multi-Session Manager:** Dynamic state integration for listing, connecting, and disconnecting multiple WhatsApp numbers.
 - [x] **Oracle Cloud Deployment Setup:** Created `docker-compose.evolution.yml` and step-by-step `ORACLE_CLOUD_DEPLOYMENT.md` guide.
 
