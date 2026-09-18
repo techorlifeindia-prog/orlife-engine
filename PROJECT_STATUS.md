@@ -212,11 +212,19 @@ OrLife Connect is a high-performance, enterprise-grade WhatsApp Multi-Account Ma
 ## 🐛 Bug Fixes (COMPLETED)
 - [x] **502 Bad Gateway Fixed:** Resolved Next.js build crash loop on Oracle VPS caused by `next/font` fetching timeouts (`ETIMEDOUT`). PM2 Next.js process (`orlife-connect-ui`) now stable and 100% online.
 - [x] **AI Hub / Ollama HTTPS Issue:** Fixed Mixed Content warnings blocking local AI `http://localhost:8090` calls on production by creating secure Next.js Server proxy routes (`/api/ai-hub/ollama-status`). Ollama AI now connects cleanly over HTTPS.
-- [x] **VPS AI Memory Constraint & Timeout Fix (Groq Cloud API):** 
-  - **Issue:** The Oracle Free Tier Micro Instance (1GB RAM) was physically unable to load the local `llama3.2` model, causing severe SSD swap thrashing and 5+ minute timeouts resulting in "Static Fallbacks".
-  - **Resolution:** Removed the local Ollama dependency from the server. Integrated the **Groq API** (`llama3-8b-8192` model) into `ai-hub-server.js` using `.env` for secure credential management.
-  - **Result:** AI Auto-Responder now works instantly (< 1 second) directly on the live 1GB RAM server without hitting memory limits or timeouts.
-- [x] **Smart Refactoring & Dead Code Cleanup:** Purged 100+ lines of redundant state declarations (`isAiTesting`, `simMessage`, `simResult`, `simLoading`) and duplicate simulation functions (`handleTestAi`, `handleRunSimulator`, `runLocalSimulator`) across `settings/page.tsx` and `automation/page.tsx` in strict compliance with Rule 1 & Rule 3 clean architecture guidelines.
+- [x] **VPS AI Memory Constraint & Timeout Fix (Groq Cloud API & Qwen 3.8 27B):** 
+  - **Issue:** The Oracle Free Tier Micro Instance (1GB RAM) was physically unable to load local LLMs, and old model `llama3-8b-8192` was decommissioned by Groq.
+  - **Resolution:** Integrated active Groq API Key (`gsk_vCB9...`) and updated default model to `qwen/qwen3.8-27b` with zero-dependency `.env` parser in `ai-hub-server.js`.
+  - **Result:** AI Auto-Responder responds in ~0.11s with accurate Hinglish customer support persona text ("Main Rani hoon...").
+- [x] **Real-Time Groq & AI Hub Health API (`/groq/status`):**
+  - Added live endpoint `/groq/status` to `ai-hub-server.js` and updated `/api/ai-hub/ollama-status/route.ts` to return real key validation status (`ONLINE` / `INVALID_KEY`).
+- [x] **Compact 1-Row AI Health Status Bar & 2-Column Side-by-Side Settings Layout (`/settings`):**
+  - Modularized `AiEngineStatusCard.tsx` into a 1-row compact live health status bar.
+  - Redesigned `/settings` page into a 60:40 side-by-side 2-column layout featuring API base URL & universal endpoint link on left, and `LiveBotSimulator.tsx` on right.
+  - Purged redundant "Test AI Connection" buttons and unnecessary state to eliminate duplicate UI controls.
+- [x] **Oracle Cloud VM Auto-Deployment Verified (`129.225.118.77` / `https://api.orlifeindia.com`):**
+  - Pushed master branch updates to GitHub, pulled and rebuilt production Next.js app on Oracle VM, restarted PM2 services (`ai-hub-server`, `whatsapp-engine`, `orlife-connect-ui`).
+  - Verified live `/api/ai-hub/simulate` returning fast Rani AI persona responses.
 
 
 
