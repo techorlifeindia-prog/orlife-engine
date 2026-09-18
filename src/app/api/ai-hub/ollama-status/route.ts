@@ -32,25 +32,29 @@ export async function GET() {
       }
     } catch {}
 
-    if (hubStatus === "ONLINE" && ollamaStatus === "ONLINE") {
-      return NextResponse.json({
-        status: "ONLINE",
-        hubStatus: "ONLINE",
-        ollamaStatus: "ONLINE",
-        models: ["llama3.2"], // We can fetch actual tags if needed
-      });
-    }
+    let groqStatus = "OFFLINE";
+
+    // 1b. Check Real Groq Status from AI Hub
+    try {
+      const groqRes = await fetch(`${baseUrl}/groq/status`, { signal: AbortSignal.timeout(3000) });
+      if (groqRes.ok) {
+        const gData = await groqRes.json();
+        groqStatus = gData.status || "OFFLINE";
+      }
+    } catch {}
 
     if (hubStatus === "ONLINE") {
       return NextResponse.json({
-        status: "PARTIAL",
+        status: "ONLINE",
         hubStatus: "ONLINE",
-        ollamaStatus: "OFFLINE",
-        models: ["OrLife Flash AI (Smart Rules)"]
+        groqStatus: groqStatus,
+        ollamaStatus: ollamaStatus,
+        activeEngine: "Groq Cloud AI (llama3-8b-8192)",
+        models: ["llama3-8b-8192", "llama-3.3-70b-versatile", "mixtral-8x7b-32768", "llama3.2"]
       });
     }
 
-    return NextResponse.json({ status: "OFFLINE", hubStatus: "OFFLINE", ollamaStatus: "OFFLINE", models: [] });
+    return NextResponse.json({ status: "OFFLINE", hubStatus: "OFFLINE", groqStatus: "OFFLINE", ollamaStatus: "OFFLINE", models: [] });
   } catch (error: any) {
     return NextResponse.json({ status: "OFFLINE", models: [] }, { status: 500 });
   }

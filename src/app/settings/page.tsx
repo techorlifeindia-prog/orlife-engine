@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Header } from "@/components/layout/Header";
 import { getInitialSessionInfo, generateProfessionalApiToken, getUserSpecificApiToken, lsGet, lsSet } from "@/lib/user-session-utils";
+import { LiveBotSimulator } from "@/components/ai/LiveBotSimulator";
+import { AiEngineStatusCard } from "@/components/ai/AiEngineStatusCard";
 import {
   Webhook, ShieldCheck, Globe, Key, Send, Eye, EyeOff,
   RefreshCw, CheckCircle2, AlertCircle, Sparkles, Copy,
@@ -90,11 +92,9 @@ export default function SettingsPage() {
 
   // AI Hub Config state
   const [aiBaseUrl, setAiBaseUrl] = useState("http://localhost:8090");
-  const [aiModelName, setAiModelName] = useState("llama3.2");
+  const [aiModelName, setAiModelName] = useState("qwen/qwen3.8-27b");
   const [aiSecretKey, setAiSecretKey] = useState("orl_sec_ai_master_key");
   const [showAiKey, setShowAiKey] = useState(false);
-  const [isAiTesting, setIsAiTesting] = useState(false);
-  const [aiTestResult, setAiTestResult] = useState<{ success: boolean; message: string; latencyMs?: number } | null>(null);
   const [isAiSaved, setIsAiSaved] = useState(false);
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
@@ -108,28 +108,6 @@ export default function SettingsPage() {
   // Webhook + Anti-Ban
   const [webhookUrl, setWebhookUrl] = useState("http://localhost:7001/api/webhook/whatsapp");
   const [events, setEvents] = useState({ MESSAGES_UPSERT: true, CONNECTION_UPDATE: true, QRCODE_UPDATED: true, SEND_MESSAGE: false });
-
-  const handleTestAi = async () => {
-    setIsAiTesting(true);
-    setAiTestResult(null);
-    const start = Date.now();
-    try {
-      const res = await fetch(`${aiBaseUrl}/health`, { signal: AbortSignal.timeout(4000) });
-      if (res.ok) {
-        const data = await res.json();
-        setAiTestResult({
-          success: true,
-          message: `AI Hub Online — Engine Status: ${data.ollama || "Ready"}`,
-          latencyMs: Date.now() - start,
-        });
-      } else {
-        setAiTestResult({ success: false, message: `Server returned ${res.status} from ${aiBaseUrl}` });
-      }
-    } catch {
-      setAiTestResult({ success: false, message: `Cannot reach AI Hub at ${aiBaseUrl}. Ensure server is running.` });
-    }
-    setIsAiTesting(false);
-  };
 
   const saveConfig = async (payload: any) => {
     try {
@@ -338,118 +316,118 @@ export default function SettingsPage() {
                   <Sparkles className="w-5 h-5 text-emerald-500" /> OrLife Flash AI Integration
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/30 ml-1">ACTIVE</span>
                 </h3>
-                <p className="text-xs text-slate-400 mt-0.5">Configure your self-hosted Local Ollama AI or VPS production server.</p>
+                <p className="text-xs text-slate-400 mt-0.5">Configure OrLife Flash AI Engine (Powered by Groq Cloud AI - llama3-8b-8192 or self-hosted Ollama).</p>
               </div>
 
-              {/* Server Credentials */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-50 dark:bg-[#06141c] border border-slate-200 dark:border-[#1b3a4e] p-4 rounded-xl">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
-                    <Globe className="w-3.5 h-3.5 text-emerald-500" /> API Base URL
-                  </label>
-                  <input type="text" value={aiBaseUrl} onChange={e => setAiBaseUrl(e.target.value)}
-                    placeholder="http://localhost:8001"
-                    className="w-full bg-white dark:bg-[#0b1d28] border border-slate-200 dark:border-[#1b3a4e] rounded-xl px-3 py-2 text-xs font-mono text-slate-900 dark:text-slate-100 focus:outline-none focus:border-emerald-500" />
-                  <span className="text-[10px] text-slate-400">Enter VPS AI Hub URL (e.g. https://api.orlifeindia.com/ai-hub)</span>
-                </div>
+              {/* Live AI Engine Status Header Card */}
+              <AiEngineStatusCard />
 
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-emerald-500" /> Model Name
-                  </label>
-                  <input type="text" value={aiModelName} onChange={e => setAiModelName(e.target.value)}
-                    placeholder="llama3.2"
-                    className="w-full bg-white dark:bg-[#0b1d28] border border-slate-200 dark:border-[#1b3a4e] rounded-xl px-3 py-2 text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400 focus:outline-none focus:border-emerald-500" />
-                  <span className="text-[10px] text-slate-400">Ollama AI model identifier</span>
-                </div>
+              {/* 2-Column Side-by-Side Grid Layout */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+                {/* Left Column (7 Cols): Credentials & Endpoint Link */}
+                <div className="lg:col-span-7 space-y-4">
+                  {/* Server Credentials */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 bg-slate-50 dark:bg-[#06141c] border border-slate-200 dark:border-[#1b3a4e] p-4 rounded-xl">
+                    <div className="space-y-1.5 md:col-span-2">
+                      <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
+                        <Globe className="w-3.5 h-3.5 text-emerald-500" /> API Base URL
+                      </label>
+                      <input type="text" value={aiBaseUrl} onChange={e => setAiBaseUrl(e.target.value)}
+                        placeholder="http://localhost:8001"
+                        className="w-full bg-white dark:bg-[#0b1d28] border border-slate-200 dark:border-[#1b3a4e] rounded-xl px-3 py-2 text-xs font-mono text-slate-900 dark:text-slate-100 focus:outline-none focus:border-emerald-500" />
+                      <span className="text-[10px] text-slate-400">Enter VPS AI Hub URL (e.g. https://api.orlifeindia.com/ai-hub)</span>
+                    </div>
 
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
-                      <Key className="w-3.5 h-3.5 text-emerald-500" /> API Secret Token
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => setAiSecretKey(generateProfessionalApiToken("orl_sec_ai_"))}
-                      className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-0.5"
-                      title="Generate new unique AI token"
-                    >
-                      <Sparkles className="w-2.5 h-2.5" /> Generate
-                    </button>
-                  </div>
-                  <div className="relative flex items-center gap-1.5">
-                    <div className="relative flex-1">
-                      <input type={showAiKey ? "text" : "password"} value={aiSecretKey} onChange={e => setAiSecretKey(e.target.value)}
-                        className="w-full bg-white dark:bg-[#0b1d28] border border-slate-200 dark:border-[#1b3a4e] rounded-xl pl-3 pr-7 py-2 text-xs font-mono text-slate-900 dark:text-slate-100 focus:outline-none focus:border-emerald-500" />
-                      <button type="button" onClick={() => setShowAiKey(p => !p)} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-emerald-500">
-                        {showAiKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    <div className="space-y-1.5 md:col-span-1">
+                      <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-emerald-500" /> AI Provider & Model
+                      </label>
+                      <select
+                        value={aiModelName}
+                        onChange={e => setAiModelName(e.target.value)}
+                        className="w-full bg-white dark:bg-[#0b1d28] border border-slate-200 dark:border-[#1b3a4e] rounded-xl px-2.5 py-2 text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                      >
+                        <optgroup label="⚡ Groq Cloud AI (Super Fast 1s)">
+                          <option value="qwen/qwen3.8-27b">⚡ Groq: Qwen 3.8 27B (qwen/qwen3.8-27b) - Fast & Smart</option>
+                          <option value="groq/compound-mini">⚡ Groq: Compound Mini (groq/compound-mini)</option>
+                          <option value="allam-2-7b">⚡ Groq: Allam 2 7B (allam-2-7b)</option>
+                        </optgroup>
+                        <optgroup label="🏠 Local VPS Ollama AI">
+                          <option value="ollama:llama3.2">🏠 Local Ollama: Llama 3.2 (1B/3B)</option>
+                          <option value="ollama:llama3.1">🏠 Local Ollama: Llama 3.1 (8B)</option>
+                          <option value="ollama:mistral">🏠 Local Ollama: Mistral 7B</option>
+                        </optgroup>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1.5 md:col-span-1">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
+                          <Key className="w-3.5 h-3.5 text-emerald-500" /> Secret Token
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setAiSecretKey(generateProfessionalApiToken("orl_sec_ai_"))}
+                          className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-0.5"
+                          title="Generate new unique AI token"
+                        >
+                          <Sparkles className="w-2.5 h-2.5" /> Generate
+                        </button>
+                      </div>
+                      <div className="relative flex items-center gap-1.5">
+                        <div className="relative flex-1">
+                          <input type={showAiKey ? "text" : "password"} value={aiSecretKey} onChange={e => setAiSecretKey(e.target.value)}
+                            className="w-full bg-white dark:bg-[#0b1d28] border border-slate-200 dark:border-[#1b3a4e] rounded-xl pl-2.5 pr-7 py-2 text-xs font-mono text-slate-900 dark:text-slate-100 focus:outline-none focus:border-emerald-500" />
+                          <button type="button" onClick={() => setShowAiKey(p => !p)} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-emerald-500">
+                            {showAiKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                          </button>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleCopyToken(aiSecretKey, "ai_token")}
+                          className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 px-2 py-2 rounded-xl text-xs font-bold flex items-center gap-1 transition-all shrink-0 active:scale-95"
+                          title="Copy API Secret Token"
+                        >
+                          {copiedToken === "ai_token" ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="md:col-span-2 pt-1">
+                      <button onClick={handleSaveAiConfig}
+                        className="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 py-2.5 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition-all shadow-md shadow-emerald-500/20 active:scale-95 cursor-pointer">
+                        {isAiSaved ? <><CheckCircle2 className="w-3.5 h-3.5" /> Settings Saved Successfully!</> : "💾 Save Settings"}
                       </button>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => handleCopyToken(aiSecretKey, "ai_token")}
-                      className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 px-2.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1 transition-all shrink-0 active:scale-95"
-                      title="Copy API Secret Token"
-                    >
-                      {copiedToken === "ai_token" ? (
-                        <><Check className="w-3.5 h-3.5 text-emerald-500" /> Copied!</>
-                      ) : (
-                        <><Copy className="w-3.5 h-3.5" /> Copy</>
-                      )}
-                    </button>
                   </div>
-                  <span className="text-[10px] text-slate-400">Secret key for authorization</span>
-                </div>
 
-
-                <div className="md:col-span-3 flex items-center gap-3 pt-1">
-                  <button onClick={handleTestAi} disabled={isAiTesting}
-                    className="flex-1 bg-white dark:bg-[#0b1d28] hover:bg-slate-100 dark:hover:bg-[#112d40] text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all disabled:opacity-50 active:scale-95">
-                    <RefreshCw className={`w-3.5 h-3.5 ${isAiTesting ? "animate-spin" : ""}`} />
-                    {isAiTesting ? "Testing AI..." : "Test AI Connection"}
-                  </button>
-                  <button onClick={handleSaveAiConfig}
-                    className="flex-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-md shadow-emerald-500/20 active:scale-95">
-                    {isAiSaved ? <><CheckCircle2 className="w-3.5 h-3.5" /> Saved!</> : "💾 Save Settings"}
-                  </button>
-                </div>
-
-                {aiTestResult && (
-                  <div className={`md:col-span-3 p-3 rounded-xl border text-[11px] flex items-center justify-between ${
-                    aiTestResult.success ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300"
-                      : "bg-red-500/10 border-red-500/30 text-red-700 dark:text-red-300"}`}>
-                    <div className="flex items-center gap-2">
-                      {aiTestResult.success ? <CheckCircle2 className="w-4 h-4 text-emerald-500" /> : <AlertCircle className="w-4 h-4 text-red-500" />}
-                      <span>{aiTestResult.message}</span>
+                  {/* Copy Universal API Link Card */}
+                  <div className="bg-slate-50 dark:bg-[#06141c] border border-slate-200 dark:border-[#1b3a4e] p-3.5 rounded-xl space-y-2">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                        <Zap className="w-4 h-4 text-emerald-500" /> Copy Universal Integration Endpoint
+                      </h4>
+                      <span className="text-[10px] bg-emerald-500/10 text-emerald-500 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold">
+                        OpenAI Compatible
+                      </span>
                     </div>
-                    {aiTestResult.latencyMs && <span className="font-mono font-bold">{aiTestResult.latencyMs}ms</span>}
+                    <div className="flex items-center gap-2">
+                      <code className="flex-1 bg-white dark:bg-[#0b1d28] border border-slate-200 dark:border-[#1b3a4e] p-2 rounded-xl font-mono text-xs text-emerald-600 dark:text-emerald-400 font-bold truncate">
+                        {`${aiBaseUrl}/v1/chat/completions`}
+                      </code>
+                      <button onClick={() => handleCopy(`${aiBaseUrl}/v1/chat/completions`)}
+                        className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 px-3 py-2 rounded-xl text-xs font-extrabold flex items-center gap-1 shadow-md transition-all active:scale-95 shrink-0">
+                        {copiedUrl === `${aiBaseUrl}/v1/chat/completions`
+                          ? <><Check className="w-3.5 h-3.5" /> Copied!</>
+                          : <><Copy className="w-3.5 h-3.5" /> Copy Link</>}
+                      </button>
+                    </div>
                   </div>
-                )}
-              </div>
-
-              {/* Single Clear Copy API Link Card */}
-              <div className="bg-slate-50 dark:bg-[#06141c] border border-slate-200 dark:border-[#1b3a4e] p-4 rounded-xl space-y-3">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
-                    <Zap className="w-4 h-4 text-emerald-500" /> Copy Universal AI Integration Endpoint
-                  </h4>
-                  <span className="text-[10px] bg-emerald-500/10 text-emerald-500 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold">
-                    OpenAI & Gemini Compatible
-                  </span>
                 </div>
-                <p className="text-[11px] text-slate-400">
-                  Is API Link ko copy karke kisi bhi project (jaise AI Hub ya external SaaS) mein paste karein:
-                </p>
-                <div className="flex items-center gap-2">
-                  <code className="flex-1 bg-white dark:bg-[#0b1d28] border border-slate-200 dark:border-[#1b3a4e] p-2.5 rounded-xl font-mono text-xs text-emerald-600 dark:text-emerald-400 font-bold truncate">
-                    {`${aiBaseUrl}/v1/chat/completions`}
-                  </code>
-                  <button onClick={() => handleCopy(`${aiBaseUrl}/v1/chat/completions`)}
-                    className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 px-4 py-2.5 rounded-xl text-xs font-extrabold flex items-center gap-1.5 shadow-md transition-all active:scale-95 shrink-0">
-                    {copiedUrl === `${aiBaseUrl}/v1/chat/completions`
-                      ? <><Check className="w-4 h-4" /> Copied!</>
-                      : <><Copy className="w-4 h-4" /> Copy API Link</>}
-                  </button>
+
+                {/* Right Column (5 Cols): Live Bot Simulator */}
+                <div className="lg:col-span-5">
+                  <LiveBotSimulator />
                 </div>
               </div>
             </fieldset>

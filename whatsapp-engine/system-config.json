@@ -6,7 +6,7 @@
   },
   "ai": {
     "aiBaseUrl": "https://api.orlifeindia.com/ai-hub",
-    "aiModelName": "llama3.2",
+    "aiModelName": "qwen/qwen3.8-27b",
     "aiSecretKey": "orl_sec_ai_09tftoq3t44dv7mah7j2g98v"
   },
   "system": {

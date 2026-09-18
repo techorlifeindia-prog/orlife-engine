@@ -2,7 +2,32 @@ const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, '../.env') });
+try {
+  const envFiles = [
+    path.join(__dirname, '../.env.local'),
+    path.join(__dirname, '../.env'),
+    path.join(__dirname, '.env')
+  ];
+  for (const ef of envFiles) {
+    if (fs.existsSync(ef)) {
+      const content = fs.readFileSync(ef, 'utf8');
+      content.split('\n').forEach(line => {
+        const trimmed = line.trim();
+        if (trimmed && !trimmed.startsWith('#')) {
+          const eqIdx = trimmed.indexOf('=');
+          if (eqIdx > 0) {
+            const k = trimmed.substring(0, eqIdx).trim();
+            let v = trimmed.substring(eqIdx + 1).trim();
+            if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
+              v = v.substring(1, v.length - 1);
+            }
+            if (k) process.env[k] = v;
+          }
+        }
+      });
+    }
+  }
+} catch (e) {}
 
 const app = express();
 const PORT = 8090;
@@ -232,53 +257,82 @@ function matchKeywordRule(messageText, rules) {
   return null;
 }
 
-/** Call OrLife Flash AI Engine (Groq Cloud API) */
-async function callOrLifeFlashAI(systemPrompt, userMessage) {
+/** Call OrLife Flash AI Engine (Groq Cloud API or Local Ollama) */
+async function callOrLifeFlashAI(systemPrompt, userMessage, modelName = 'qwen/qwen3.8-27b') {
   try {
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.GROQ_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'llama3-8b-8192',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userMessage }
-        ],
-        temperature: 0.2,
-        max_tokens: 55,
-      }),
-      signal: AbortSignal.timeout(10000), // Groq is extremely fast, 10s is plenty
-    });
+    const isOllama = modelName.startsWith('ollama:');
+    const realModel = isOllama ? modelName.replace('ollama:', '') : modelName;
 
-    if (!res.ok) {
-      const errText = await res.text();
-      throw new Error(`Groq HTTP ${res.status}: ${errText}`);
+    if (isOllama) {
+      const res = await fetch(`${OLLAMA_URL}/api/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: realModel,
+          prompt: `System: ${systemPrompt}\n\nCustomer: ${userMessage}\n\nAssistant:`,
+          stream: false,
+          options: { temperature: 0.2, num_predict: 55 }
+        }),
+        signal: AbortSignal.timeout(30000),
+      });
+      if (!res.ok) throw new Error(`Ollama HTTP ${res.status}`);
+      const data = await res.json();
+      return data.response ? data.response.trim() : null;
+    } else {
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.GROQ_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: realModel,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userMessage }
+          ],
+          temperature: 0.2,
+          max_tokens: 55,
+        }),
+        signal: AbortSignal.timeout(10000), // Groq is extremely fast, 10s is plenty
+      });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`Groq HTTP ${res.status}: ${errText}`);
+      }
+      const data = await res.json();
+      return data.choices[0]?.message?.content?.trim() || null;
     }
-    const data = await res.json();
-    return data.choices[0]?.message?.content?.trim() || null;
   } catch (e) {
-    console.error('[AI Hub] Groq Flash AI call failed:', e.message);
+    console.error(`[AI Hub] Flash AI call failed (${modelName}):`, e.message);
     return null;
   }
 }
 
 // ─── Endpoints ────────────────────────────────────────────────────────────────
 
-// 1. Health Check
-app.get('/health', (req, res) => {
-  res.json({
-    status: 'ONLINE',
-    service: AI_ENGINE_NAME,
-    port: PORT,
-    engine: 'OrLife Flash AI (Ollama Local)',
-    ollamaUrl: OLLAMA_URL,
-    ollamaModel: OLLAMA_MODEL,
-    whatsappEngine: WHATSAPP_ENGINE_URL,
-    timestamp: new Date().toISOString(),
-  });
+// 1c. Groq Status Check
+app.get('/groq/status', async (req, res) => {
+  try {
+    const apiKey = process.env.GROQ_API_KEY;
+    if (!apiKey) {
+      return res.json({ status: 'NO_KEY', message: 'GROQ_API_KEY not found in .env' });
+    }
+    const gRes = await fetch('https://api.groq.com/openai/v1/models', {
+      headers: { 'Authorization': `Bearer ${apiKey}` },
+      signal: AbortSignal.timeout(4000),
+    });
+    if (gRes.ok) {
+      return res.json({ status: 'ONLINE', message: 'Groq API Key Valid & Active 🟢' });
+    } else {
+      const errData = await gRes.json().catch(() => ({}));
+      const code = errData.error?.code || gRes.status;
+      return res.json({ status: 'INVALID_KEY', message: `Groq HTTP ${gRes.status}: ${code}` });
+    }
+  } catch (e) {
+    return res.json({ status: 'OFFLINE', message: e.message });
+  }
 });
 
 // 1b. Ollama Status Check
@@ -423,18 +477,19 @@ app.post('/ai-hub/process', async (req, res) => {
     }
   }
 
-  // Step 2: OrLife Flash AI Engine (Ollama Local via Concurrency Queue)
+  // Step 2: OrLife Flash AI Engine (Groq Cloud API / Ollama Local)
   if (!replyText) {
-    console.log(`[AI Hub] 🤖 Enqueuing OrLife Flash AI request (${OLLAMA_MODEL}) for +${senderNumber}...`);
+    const activeModel = config.aiModelName || config.model || 'qwen/qwen3.8-27b';
+    console.log(`[AI Hub] 🤖 Enqueuing OrLife Flash AI request (${activeModel}) for +${senderNumber}...`);
     try {
-      const aiResponse = await enqueueAiRequest(() => callOrLifeFlashAI(config.systemPrompt, messageText));
+      const aiResponse = await enqueueAiRequest(() => callOrLifeFlashAI(config.systemPrompt, messageText, activeModel));
       if (aiResponse) {
         replyText = aiResponse;
-        replySource = `ORLIFE_FLASH_AI:${OLLAMA_MODEL}`;
+        replySource = `ORLIFE_FLASH_AI:${activeModel}`;
         console.log(`[AI Hub] ✅ OrLife Flash AI replied: "${replyText.substring(0, 80)}..."`);
       }
     } catch (err) {
-      console.error(`[AI Hub] Ollama AI Queue error for +${senderNumber}:`, err.message);
+      console.error(`[AI Hub] Flash AI Queue error for +${senderNumber}:`, err.message);
     }
   }
 
