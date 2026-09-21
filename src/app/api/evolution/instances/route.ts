@@ -14,12 +14,12 @@ export async function GET() {
     });
     clearTimeout(timer);
 
-    if (!res.ok) return NextResponse.json([]);
+    if (!res.ok) return NextResponse.json({ error: 'Engine server error' }, { status: 502 });
     const data = await res.json();
     return NextResponse.json(data || []);
   } catch {
     clearTimeout(timer);
-    return NextResponse.json([]);
+    return NextResponse.json({ error: 'WhatsApp Engine offline' }, { status: 503 });
   }
 }
 

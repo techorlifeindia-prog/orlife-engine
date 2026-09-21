@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Header } from "@/components/layout/Header";
 import { Plus, RefreshCw, Server, Wifi, WifiOff, Activity, CheckCircle2, ShieldAlert } from "lucide-react";
-import { fetchInstances, createInstance, logoutInstance, Instance } from "@/lib/api-client";
+import { fetchInstancesWithStatus, createInstance, logoutInstance, Instance } from "@/lib/api-client";
 import { getFilteredInstancesForUser, saveClientCreatedDevice, getInitialSessionInfo } from "@/lib/user-session-utils";
 import { QRModal } from "@/components/devices/qr-modal";
 import { TestModal } from "@/components/devices/test-modal";
@@ -51,12 +51,13 @@ export default function DevicesPage() {
     setLoading(true);
     setEngineStatus("checking");
     try {
-      const data = await fetchInstances();
+      const { instances: data, isOnline } = await fetchInstancesWithStatus();
       const filtered = getFilteredInstancesForUser(data);
       setInstances(filtered);
-      setEngineStatus("online");
+      setEngineStatus(isOnline ? "online" : "offline");
     } catch (e) {
       console.error("Engine check failed:", e);
+      setInstances([]);
       setEngineStatus("offline");
     }
     setLoading(false);

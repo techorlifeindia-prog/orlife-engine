@@ -253,22 +253,56 @@ export default function AutomationRulesPage() {
   const handleSavePrompt = async () => {
     setSavingPrompt(true);
     try {
+      const payload = {
+        systemPrompt,
+        aiEnabled,
+        rules,
+        mode,
+        tenantId,
+        aiName,
+        minDelaySec,
+        maxDelaySec,
+        rateLimitPerMin,
+        webhookUrl,
+        apiKey,
+      };
+
       const res = await fetch("/api/ai-hub/config", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ systemPrompt, aiEnabled, rules }),
+        body: JSON.stringify(payload),
         signal: AbortSignal.timeout(5000),
       });
       if (res.ok) {
         setPromptSaved(true);
         setTimeout(() => setPromptSaved(false), 3000);
+        localStorage.setItem("orlife_ai_system_prompt", systemPrompt);
+        localStorage.setItem("orlife_min_delay_sec", String(minDelaySec));
+        localStorage.setItem("orlife_max_delay_sec", String(maxDelaySec));
+        localStorage.setItem("orlife_rate_limit_per_min", String(rateLimitPerMin));
+        localStorage.setItem("orlife_mode", mode);
+        localStorage.setItem("orlife_webhook_url", webhookUrl);
+        useConfirmStore.getState().showAlert({
+          title: "Settings Saved ✅",
+          message: `Anti-Ban timing (${minDelaySec}s - ${maxDelaySec}s) & configuration saved successfully!`,
+          type: "success",
+        });
       } else {
         useConfirmStore.getState().showAlert({ title: "Save Failed", message: "Could not save to AI Hub. Is Port 8090 running?", type: "warning" });
       }
     } catch {
-      useConfirmStore.getState().showAlert({ title: "AI Hub Offline", message: "AI Hub (Port 8090) is not reachable. Prompt saved locally.", type: "info" });
+      useConfirmStore.getState().showAlert({
+        title: "Settings Saved Locally ✅",
+        message: `Anti-Ban timing (${minDelaySec}s - ${maxDelaySec}s) saved locally in your browser.`,
+        type: "success",
+      });
       // Save locally anyway
       localStorage.setItem("orlife_ai_system_prompt", systemPrompt);
+      localStorage.setItem("orlife_min_delay_sec", String(minDelaySec));
+      localStorage.setItem("orlife_max_delay_sec", String(maxDelaySec));
+      localStorage.setItem("orlife_rate_limit_per_min", String(rateLimitPerMin));
+      localStorage.setItem("orlife_mode", mode);
+      localStorage.setItem("orlife_webhook_url", webhookUrl);
       setPromptSaved(true);
       setTimeout(() => setPromptSaved(false), 3000);
     }
@@ -679,9 +713,10 @@ export default function AutomationRulesPage() {
             <div className="flex justify-end pt-1">
               <button
                 onClick={handleSavePrompt}
-                className="px-6 py-2.5 bg-[#10b981] hover:bg-emerald-400 text-slate-950 font-extrabold text-xs rounded-xl shadow-md shadow-[#10b981]/20 flex items-center justify-center gap-2 active:scale-95 cursor-pointer transition-all"
+                disabled={savingPrompt}
+                className="px-6 py-2.5 bg-[#10b981] hover:bg-emerald-400 text-slate-950 font-extrabold text-xs rounded-xl shadow-md shadow-[#10b981]/20 flex items-center justify-center gap-2 active:scale-95 cursor-pointer transition-all disabled:opacity-70"
               >
-                <Save className="w-4 h-4" /> Save Working Mode
+                {savingPrompt ? <><RefreshCw className="w-4 h-4 animate-spin" /> Saving...</> : promptSaved ? <><CheckCircle2 className="w-4 h-4 text-slate-950" /> Saved! ✅</> : <><Save className="w-4 h-4" /> Save Working Mode</>}
               </button>
             </div>
           </div>
@@ -753,9 +788,10 @@ export default function AutomationRulesPage() {
             <div className="flex justify-end pt-1">
               <button
                 onClick={handleSavePrompt}
-                className="px-6 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs rounded-xl shadow-md shadow-amber-500/20 flex items-center justify-center gap-2 active:scale-95 cursor-pointer transition-all"
+                disabled={savingPrompt}
+                className="px-6 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs rounded-xl shadow-md shadow-amber-500/20 flex items-center justify-center gap-2 active:scale-95 cursor-pointer transition-all disabled:opacity-70"
               >
-                <Save className="w-4 h-4" /> Save Anti-Ban Timing
+                {savingPrompt ? <><RefreshCw className="w-4 h-4 animate-spin" /> Saving...</> : promptSaved ? <><CheckCircle2 className="w-4 h-4 text-slate-950" /> Saved! ✅</> : <><Save className="w-4 h-4" /> Save Anti-Ban Timing</>}
               </button>
             </div>
           </div>
@@ -798,9 +834,12 @@ export default function AutomationRulesPage() {
             </div>
 
             <div className="flex justify-end">
-              <button onClick={handleSavePrompt}
-                className="px-6 py-2.5 bg-blue-500 hover:bg-blue-400 text-white font-extrabold text-xs rounded-xl shadow-md shadow-blue-500/20 flex items-center justify-center gap-2 active:scale-95 cursor-pointer transition-all">
-                <Save className="w-4 h-4" /> Save Webhook & API
+              <button
+                onClick={handleSavePrompt}
+                disabled={savingPrompt}
+                className="px-6 py-2.5 bg-blue-500 hover:bg-blue-400 text-white font-extrabold text-xs rounded-xl shadow-md shadow-blue-500/20 flex items-center justify-center gap-2 active:scale-95 cursor-pointer transition-all disabled:opacity-70"
+              >
+                {savingPrompt ? <><RefreshCw className="w-4 h-4 animate-spin" /> Saving...</> : promptSaved ? <><CheckCircle2 className="w-4 h-4" /> Saved! ✅</> : <><Save className="w-4 h-4" /> Save Webhook & API</>}
               </button>
             </div>
 

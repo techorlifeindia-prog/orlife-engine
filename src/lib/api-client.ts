@@ -16,15 +16,32 @@ export interface QRCodeResponse {
   owner?: string;
 }
 
+export interface FetchInstancesResult {
+  instances: Instance[];
+  isOnline: boolean;
+}
+
 export async function fetchInstances(): Promise<Instance[]> {
   try {
     const res = await fetch('/api/evolution/instances');
-    if (!res.ok) throw new Error('Failed to fetch instances');
+    if (!res.ok) return [];
     const data = await res.json();
-    return data || [];
-  } catch (error) {
-    console.error('Error fetching instances:', error);
+    return Array.isArray(data) ? data : [];
+  } catch {
     return [];
+  }
+}
+
+export async function fetchInstancesWithStatus(): Promise<FetchInstancesResult> {
+  try {
+    const res = await fetch('/api/evolution/instances');
+    if (!res.ok) {
+      return { instances: [], isOnline: false };
+    }
+    const data = await res.json();
+    return { instances: Array.isArray(data) ? data : [], isOnline: true };
+  } catch {
+    return { instances: [], isOnline: false };
   }
 }
 
