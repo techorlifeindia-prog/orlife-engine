@@ -3,7 +3,6 @@
 import { Instance } from "@/lib/api-client";
 import { getClientCodeForDevice } from "@/lib/user-session-utils";
 import {
-  BatteryMedium,
   MoreVertical,
   QrCode,
   SignalHigh,
@@ -249,10 +248,12 @@ export function DeviceCard({
             <SignalHigh className="w-4 h-4 text-emerald-400" />
             <span className="text-foreground/90 font-semibold">{isConnected ? "Active" : "Offline"}</span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <BatteryMedium className="w-4 h-4 text-muted-foreground" />
-            <span>90%</span>
-          </div>
+          {isConnected && (
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span className="text-slate-400 font-medium">Multi-Device MD</span>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
