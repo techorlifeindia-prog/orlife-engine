@@ -40,6 +40,8 @@ yarn-error.log*
 whatsapp-engine/sessions
 whatsapp-engine/node_modules
 whatsapp-engine/ai-config.json
+whatsapp-engine/message_counts.json
+*.tsbuildinfo
 .vscode
 /scratch
 
